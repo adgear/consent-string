@@ -1,0 +1,10 @@
+{application, consent_string, [
+  {description, "IAB consent-string library"},
+  {vsn, git},
+  {registered, []},
+  {applications, [
+    kernel,
+    stdlib
+  ]},
+  {env, []}
+]}.

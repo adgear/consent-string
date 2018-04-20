@@ -2,10 +2,34 @@
 
 IAB consent-string library
 
+[![Build Status](https://travis-ci.org/adgear/consent-string.svg?branch=master)](https://travis-ci.org/adgear/consent-string?branch=master)
+
 ## API
 
 ```erlang
-TODO
+1> {ok, Consent} = consent_string:parse_b64(<<"BAAAAAAOYa7j0AcABBENBk-AAAAhGAKAAyAAIABoAIAAcgA0ACYADgAOQBAw">>).
+{ok,{consent,1,0,15442098420,28,1,1,<<"EN">>,100,
+             <<248,0,0>>,
+             529,1,
+             {vendor_range,0,10,[25,2,13,32,57,52,76,56,114,259]}}}
+
+2> consent_string:purpose(1, Consent).
+true
+
+4> consent_string:purpose([1, 3], Consent).
+true
+
+3> consent_string:vendor(32, Consent).
+true
+```
+
+## Tests
+
+```makefile
+make dialyzer
+make elvis
+make eunit
+make xref
 ```
 
 ## License
