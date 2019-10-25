@@ -1,3 +1,5 @@
+% https://github.com/InteractiveAdvertisingBureau/Consent-String-SDK-JS/blob/master/src/utils/definitions.js
+
 -module(consent_string).
 -include("consent_string.hrl").
 
@@ -11,7 +13,8 @@
 -spec parse(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
-parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
+% https://github.com/InteractiveAdvertisingBureau/GDPR-Transparency-and-Consent-Framework/blob/master/Consent%20string%20and%20vendor%20list%20formats%20v1.1%20Final.md#vendor-consent-string-format-
+parse(<<1:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
         ConsentScreen:6, ConsentLanguage1:6, ConsentLanguage2:6,
         VendorListVersion:12, PurposesAllowed:24/bitstring, MaxVendorId:16,
         EncodingType:1, Rest/bitstring>>) ->
@@ -24,7 +27,37 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
                 65 + ConsentLanguage2]),
 
             {ok, #consent {
-                version = Version,
+                version = 1,
+                created = Created,
+                last_updated = LastUpdated,
+                cmp_id = CmpId,
+                cmp_version = CmpVersion,
+                consent_screen = ConsentScreen,
+                consent_language = ConsentLanguage,
+                vendor_list_version = VendorListVersion,
+                purposes_allowed = PurposesAllowed,
+                max_vendor_id = MaxVendorId,
+                encoding_type = EncodingType,
+                vendors = Vendors
+            }}
+    end;
+% https://github.com/InteractiveAdvertisingBureau/GDPR-Transparency-and-Consent-Framework/blob/master/TCFv2/IAB%20Tech%20Lab%20-%20Consent%20string%20and%20vendor%20list%20formats%20v2.md#the-core-string
+parse(<<2:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
+        ConsentScreen:6, ConsentLanguage1:6, ConsentLanguage2:6,
+        VendorListVersion:12, _TcfPolicyVersion:6, _IsServiceSpecific:1,
+        _UseNonStandardStacks:1, _SpecialFeatureOptIns:12, PurposesAllowed:24/bitstring,
+        _PurposesLITransparency:24, _PurposeOneTreatment:1, _PublisherCC:12,
+        MaxVendorId:16, EncodingType:1, Rest/bitstring>>) ->
+
+    case parse_vendors(EncodingType, Rest) of
+        {error, invalid_vendors} ->
+            {error, invalid_consent_string};
+        Vendors ->
+            ConsentLanguage = list_to_binary([65 + ConsentLanguage1,
+                65 + ConsentLanguage2]),
+
+            {ok, #consent {
+                version = 2,
                 created = Created,
                 last_updated = LastUpdated,
                 cmp_id = CmpId,
@@ -45,6 +78,7 @@ parse(_) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
 parse_b64(Bin) ->
+    io:format("~p~n", [web_base64_decode(Bin)]),
     parse(web_base64_decode(Bin)).
 
 -spec purpose(pos_integer() | [pos_integer()], consent()) ->
