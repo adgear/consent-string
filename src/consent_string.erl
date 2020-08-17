@@ -5,8 +5,14 @@
     parse/1,
     parse_b64/1,
     purpose/2,
-    vendor/2
+    vendor/2,
+
+    main/1
 ]).
+
+-spec main(list()) -> no_return().
+main(Args) ->
+    consent_string_cli:main(Args).
 
 -spec parse(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
