@@ -4,7 +4,7 @@
 
 -define(CONSENT_STRING_1, <<4,225,5,16,12,142,16,81,0,200,1,192,4,49,13,0,142,0,0,0,125,188,0,64,1,32>>).
 
-consent_string_test() ->
+consent_string_v1_test() ->
     {ok, CS1} = consent_string:parse(?CONSENT_STRING_1),
 
     #consent {
@@ -32,6 +32,11 @@ consent_string_test() ->
     true = consent_string:vendor(1, CS1),
     false = consent_string:vendor(9, CS1),
     false = consent_string:vendor(2012, CS1).
+
+consent_string_v2_test() ->
+    TCFv2 = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
+    Ret = consent_string:parse_b64(TCFv2),
+    ok.
 
 consent_string_wild_test() ->
     % ngrep -q port -d lo -W single port 8083 | grep '"consent"' | awk 'BEGIN {FS="\"consent\":\""} {print $2}' | cut -d '"' -f1
