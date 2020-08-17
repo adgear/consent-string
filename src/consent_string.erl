@@ -51,7 +51,9 @@ parse(_) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
 parse_b64(Bin) ->
-    parse(web_base64_decode(Bin)).
+    Parts = binary:split(Bin, <<".">>, [global]),
+    CoreString = hd(Parts),
+    parse(web_base64_decode(CoreString)).
 
 -spec purpose(pos_integer() | [pos_integer()], consent()) ->
     boolean().
