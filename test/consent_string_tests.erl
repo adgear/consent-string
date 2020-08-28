@@ -35,8 +35,37 @@ consent_string_v1_test() ->
 
 consent_string_v2_test() ->
     TCFv2 = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
-    Ret = consent_string:parse_b64(TCFv2),
+    {ok, Actual} = consent_string:parse_b64(TCFv2),
+
+    ?assertEqual(Actual#consent.version, 2),
+    ?assertEqual(Actual#consent.created, 15973861814),
+    ?assertEqual(Actual#consent.last_updated, 15973861814),
+    ?assertEqual(Actual#consent.cmp_id, 10),
+    ?assertEqual(Actual#consent.cmp_version, 9),
+    ?assertEqual(Actual#consent.consent_screen, 0),
+    ?assertEqual(Actual#consent.consent_language, <<"FR">>),
+    ?assertEqual(Actual#consent.vendor_list_version, 51),
+    ?assertEqual(Actual#consent.tcf_policy_version, 2),
+    ?assertEqual(Actual#consent.is_service_specific, 1),
+    ?assertEqual(Actual#consent.use_non_standard_stacks, 0),
+    ?assertEqual(Actual#consent.purposes_one_treatment, 0),
+    ?assertEqual(Actual#consent.publisher_cc, <<"FR">>),
+    ?assertEqual(Actual#consent.purposes_allowed, <<255, 192, 0>>),
+    ?assertEqual(Actual#consent.max_vendor_id, 811),
+    ?assertEqual(Actual#consent.encoding_type, undefined).
+
+consent_string_range_test() ->
+    TCFv2Range = <<"CO4cLaDO4cMW-AHABBENA0CsAP_AAH_AAAAAGSQKAABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDJAMkgNAACAAWAA8ACoAFwAMgAcABAACoAGgAPAAmABPAC6AG0APQAhABcgDSAHOAO4AfoBCADyALzAZIAAAAA.f_gAD_gAAAAA">>,
+    {ok, Actual} = consent_string:parse_b64(TCFv2Range),
+    io:format(user, "~p~n", [Actual]),
+    %% ?assertEqual(nope, Actual).
     ok.
+
+consent_string_range_with_legitimate_interests() ->
+    TCFv2Legitimate = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
+    {ok, Actual} = consent_string:parse_b64(TCFv2Legitimate),
+    io:format(user, "~p~n", [Actual]),
+    ?assertEqual(nope, Actual).
 
 consent_string_wild_test() ->
     % ngrep -q port -d lo -W single port 8083 | grep '"consent"' | awk 'BEGIN {FS="\"consent\":\""} {print $2}' | cut -d '"' -f1

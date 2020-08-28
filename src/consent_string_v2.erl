@@ -8,70 +8,152 @@
 
 parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
         ConsentScreen:6, ConsentLanguage1:6, ConsentLanguage2:6,
-        VendorListVersion:12, PurposesAllowed:24/bitstring, MaxVendorId:16,
-        EncodingType:1, Rest/bitstring>>) ->
+        VendorListVersion:12,
 
-    case parse_vendors(EncodingType, Rest) of
-        {error, invalid_vendors} ->
-            {error, invalid_consent_string};
-        Vendors ->
-            ConsentLanguage = list_to_binary([65 + ConsentLanguage1,
-                65 + ConsentLanguage2]),
+        TcfPolicyVersion:6, IsServiceSpecific:1, UseNonStandardStacks:1,
+        SpecialFeatureOptins:12,
 
-            {ok, #consent {
-                version = Version,
-                created = Created,
-                last_updated = LastUpdated,
-                cmp_id = CmpId,
-                cmp_version = CmpVersion,
-                consent_screen = ConsentScreen,
-                consent_language = ConsentLanguage,
-                vendor_list_version = VendorListVersion,
-                purposes_allowed = PurposesAllowed,
-                max_vendor_id = MaxVendorId,
-                encoding_type = EncodingType,
-                vendors = Vendors
-            }}
+        %% renamed from PurposesAllowed in specification
+        PurposesConsent:24/bitstring,
+        PurposesLITransparency:24/bitstring,
+        PurposesOneTreatment:1,
+        PublisherCC1:6, PublisherCC2:6,
+
+        Blob/bitstring>>) ->
+    PublisherConsentCountry = list_to_binary([65 + PublisherCC1, 65 + PublisherCC2]),
+    ConsentLanguage = list_to_binary([65 + ConsentLanguage1, 65 + ConsentLanguage2]),
+
+    io:format("parse vendor consent ====================================~n"),
+    case parse_vendors(Blob) of
+        {error, invalid_vendors} -> {error, invalid_consent_string};
+        {ok, MaxVendorId, Vendors, AfterVendorBlob} ->
+            io:format("parse vendor legitimate interest ========================~n"),
+            case parse_vendor_legitimate_interests(AfterVendorBlob) of
+                {error, invalid_vendor_legitimate_interests} -> {error, invalid_consent_string};
+                {ok, MaxVendorLIId, LegitimateInterests, AfterPubLIBlob} ->
+                    io:format("parse publisher restrictions section ====================~n"),
+                    case parse_publisher_restrictions(AfterPubLIBlob) of
+                        {error, invalid_publisher_restrictions} -> {error, invalid_publisher_restriction};
+                        {ok, Max, Restrictions, _Rest} ->
+                            {ok, #consent {
+                                version = Version,
+                                created = Created,
+                                last_updated = LastUpdated,
+                                cmp_id = CmpId,
+                                cmp_version = CmpVersion,
+                                consent_screen = ConsentScreen,
+                                consent_language = ConsentLanguage,
+                                vendor_list_version = VendorListVersion,
+                                tcf_policy_version = TcfPolicyVersion,
+                                is_service_specific = IsServiceSpecific,
+                                use_non_standard_stacks = UseNonStandardStacks,
+                                special_feature_optins = SpecialFeatureOptins,
+                                purposes_li_transparency = PurposesLITransparency,
+                                purposes_one_treatment = PurposesOneTreatment,
+                                publisher_cc = PublisherConsentCountry,
+                                purposes_allowed = PurposesConsent,
+                                max_vendor_id = MaxVendorId,
+                                encoding_type = undefined, % IsRangeEncoding, % refactor messed this up will have to think about how to do this now
+                                vendors = Vendors,
+                                vendor_legitimate_interests = LegitimateInterests,
+                                publisher_restrictions = Restrictions
+                            }}
+                    end
+            end
     end;
 parse(_) ->
     {error, invalid_consent_string}.
 
 %% private
 
-parse_vendors(0, Bin) ->
-    #vendor_bit_field {
-        fields = Bin
-    };
-parse_vendors(1, <<DefaultConsent:1, NumEntries:12, Rest/bitstring>>) ->
+
+%% parse_vendors(<<MaxVendorId:16, IsRangeEncoding:1, Rest/bitstring>>)
+-spec parse_vendors(binary()) -> {pos_integer(), #vendor_bit_field{}, bitstring()}
+                               | {error, invalid_vendors}.
+parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId, Rest/bitstring>>) ->
+    {ok, MaxVendorId, #vendor_bit_field { fields = Bin }, Rest};
+parse_vendors(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
     case parse_entries(Rest, NumEntries, []) of
-        {ok, Entries} ->
-            #vendor_range {
-                default_consent = DefaultConsent,
-                num_entries = NumEntries,
-                entries = Entries
+        {ok, EntryRest, Entries} ->
+            {ok, MaxVendorId,
+                 #vendor_range {
+                     default_consent = undefined,
+                     num_entries = NumEntries,
+                     entries = Entries
+                 },
+                 EntryRest};
+        {error, invalid_entries} ->
+            {error, invalid_vendors}
+    end;
+parse_vendors(_) ->
+    {error, invalid_vendors}.
+
+parse_publisher_restrictions(<<0:12, Rest/bitstring>>) ->
+    {ok, 0, #publisher_restrictions { num_pub_restrictions = 0 }, Rest};
+parse_publisher_restrictions(<<NumPubRestrictions:12, RestrictionEntriesBlob/bitstring>>) ->
+    {Rest, Entries} = aaa(NumPubRestrictions, RestrictionEntriesBlob, []),
+    {Rest, #publisher_restrictions { num_pub_restrictions = NumPubRestrictions, entries = Entries } }.
+
+%% need a better function name :)
+aaa(0, Rest, Acc) ->
+    {Rest, Acc};
+aaa(N, Blob, Acc) ->
+    {Rest, Entry} = parse_publisher_restriction_single_entry(Blob),
+    aaa(N - 1, Rest, [Entry | Acc]).
+
+parse_publisher_restriction_single_entry(<<RestrictionType:2, NumEntries:12, Rest/bitstring>>) ->
+    case parse_entries(Rest, NumEntries, []) of
+        {ok, EntryRest, Entries} ->
+            {EntryRest,
+             #publisher_restrictions_entry {
+                  restriction_type = RestrictionType,
+                  num_entries = NumEntries,
+                  entries = Entries
+             }
             };
         {error, invalid_entries} ->
             {error, invalid_vendors}
     end;
-parse_vendors(_, _) ->
-    {error, invalid_vendors}.
+parse_publisher_restriction_single_entry(_) ->
+    {error, invalid_publisher_restriction}.
+
+
+parse_vendor_legitimate_interests(<<MaxVendorId:16, 0:1, Bin:MaxVendorId, Rest/bitstring>>) ->
+    {ok, MaxVendorId, #vendor_legitimate_interests_entry { fields = Bin }, Rest};
+parse_vendor_legitimate_interests(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
+    case parse_entries(Rest, NumEntries, []) of
+        {ok, EntryRest, Entries} ->
+            {ok,
+             MaxVendorId,
+             #vendor_legitimate_interests_range {
+                 num_entries = NumEntries,
+                 entries = Entries
+             },
+             EntryRest};
+        {error, invalid_entries} ->
+            {error, invalid_vendor_legitimate_interests}
+    end;
+parse_vendor_legitimate_interests(_) ->
+    {error, invalid_vendor_legitimate_interests}.
 
 parse_entries(<<>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:1>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:2>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:3>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:4>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:5>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:6>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
 parse_entries(<<0:7>>, 0, Acc) ->
-    {ok, Acc};
+    {ok, <<>>, Acc};
+parse_entries(Rest, 0, Acc) ->
+    {ok, Rest, Acc};
 parse_entries(<<0:1, Single:16, Rest/bitstring>>, N, Acc) ->
     parse_entries(Rest, N - 1, [Single | Acc]);
 parse_entries(<<1:1, Start:16, End:16, Rest/bitstring>>, N, Acc) ->
