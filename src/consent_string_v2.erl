@@ -23,18 +23,15 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
     PublisherConsentCountry = list_to_binary([65 + PublisherCC1, 65 + PublisherCC2]),
     ConsentLanguage = list_to_binary([65 + ConsentLanguage1, 65 + ConsentLanguage2]),
 
-    io:format("parse vendor consent ====================================~n"),
     case parse_vendors(Blob) of
         {error, invalid_vendors} -> {error, invalid_consent_string};
         {ok, MaxVendorId, Vendors, AfterVendorBlob} ->
-            io:format("parse vendor legitimate interest ========================~n"),
             case parse_vendor_legitimate_interests(AfterVendorBlob) of
                 {error, invalid_vendor_legitimate_interests} -> {error, invalid_consent_string};
-                {ok, MaxVendorLIId, LegitimateInterests, AfterPubLIBlob} ->
-                    io:format("parse publisher restrictions section ====================~n"),
+                {ok, _MaxVendorLIId, LegitimateInterests, AfterPubLIBlob} ->
                     case parse_publisher_restrictions(AfterPubLIBlob) of
                         {error, invalid_publisher_restrictions} -> {error, invalid_publisher_restriction};
-                        {ok, Max, Restrictions, _Rest} ->
+                        {ok, Restrictions, _Rest} ->
                             {ok, #consent {
                                 version = Version,
                                 created = Created,
@@ -70,7 +67,7 @@ parse(_) ->
 %% parse_vendors(<<MaxVendorId:16, IsRangeEncoding:1, Rest/bitstring>>)
 -spec parse_vendors(binary()) -> {pos_integer(), #vendor_bit_field{}, bitstring()}
                                | {error, invalid_vendors}.
-parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId, Rest/bitstring>>) ->
+parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
     {ok, MaxVendorId, #vendor_bit_field { fields = Bin }, Rest};
 parse_vendors(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
     case parse_entries(Rest, NumEntries, []) of
@@ -89,36 +86,39 @@ parse_vendors(_) ->
     {error, invalid_vendors}.
 
 parse_publisher_restrictions(<<0:12, Rest/bitstring>>) ->
-    {ok, 0, #publisher_restrictions { num_pub_restrictions = 0 }, Rest};
+    {ok, #publisher_restrictions { num_pub_restrictions = 0 }, Rest};
 parse_publisher_restrictions(<<NumPubRestrictions:12, RestrictionEntriesBlob/bitstring>>) ->
-    {Rest, Entries} = aaa(NumPubRestrictions, RestrictionEntriesBlob, []),
-    {Rest, #publisher_restrictions { num_pub_restrictions = NumPubRestrictions, entries = Entries } }.
+    {Rest, Entries} = parse_publisher_restriction_bundle(NumPubRestrictions, RestrictionEntriesBlob, []),
+    {ok, #publisher_restrictions { num_pub_restrictions = NumPubRestrictions,
+                                   entries = Entries }, Rest}.
 
 %% need a better function name :)
-aaa(0, Rest, Acc) ->
+parse_publisher_restriction_bundle(0, Rest, Acc) ->
     {Rest, Acc};
-aaa(N, Blob, Acc) ->
+parse_publisher_restriction_bundle(N, Blob, Acc) ->
     {Rest, Entry} = parse_publisher_restriction_single_entry(Blob),
-    aaa(N - 1, Rest, [Entry | Acc]).
+    parse_publisher_restriction_bundle(N - 1, Rest, [Entry | Acc]).
 
-parse_publisher_restriction_single_entry(<<RestrictionType:2, NumEntries:12, Rest/bitstring>>) ->
+parse_publisher_restriction_single_entry(<<PurposeId:6, RestrictionType:2, NumEntries:12, Rest/bitstring>>) ->
     case parse_entries(Rest, NumEntries, []) of
         {ok, EntryRest, Entries} ->
             {EntryRest,
              #publisher_restrictions_entry {
+                  purpose_id = PurposeId,
                   restriction_type = RestrictionType,
                   num_entries = NumEntries,
                   entries = Entries
              }
             };
         {error, invalid_entries} ->
-            {error, invalid_vendors}
-    end;
-parse_publisher_restriction_single_entry(_) ->
-    {error, invalid_publisher_restriction}.
+            {error, invalid_publisher_restriction_invalid_entry}
+    end.
 
+%% parse_publisher_restriction_single_entry(Bin) ->
+%%     io:format("~p: ~p~n", [?FUNCTION_NAME, Bin]),
+%%     {error, invalid_publisher_restriction_blargh}.
 
-parse_vendor_legitimate_interests(<<MaxVendorId:16, 0:1, Bin:MaxVendorId, Rest/bitstring>>) ->
+parse_vendor_legitimate_interests(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
     {ok, MaxVendorId, #vendor_legitimate_interests_entry { fields = Bin }, Rest};
 parse_vendor_legitimate_interests(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
     case parse_entries(Rest, NumEntries, []) of

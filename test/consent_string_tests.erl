@@ -55,17 +55,22 @@ consent_string_v2_test() ->
     ?assertEqual(Actual#consent.encoding_type, undefined).
 
 consent_string_range_test() ->
-    TCFv2Range = <<"CO4cLaDO4cMW-AHABBENA0CsAP_AAH_AAAAAGSQKAABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDJAMkgNAACAAWAA8ACoAFwAMgAcABAACoAGgAPAAmABPAC6AG0APQAhABcgDSAHOAO4AfoBCADyALzAZIAAAAA.f_gAD_gAAAAA">>,
-    {ok, Actual} = consent_string:parse_b64(TCFv2Range),
-    io:format(user, "~p~n", [Actual]),
-    %% ?assertEqual(nope, Actual).
-    ok.
+    TCF = <<"CO4cLaDO4cMW-AHABBENA0CsAP_AAH_AAAAAGSQKAABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDJAMkgNAACAAWAA8ACoAFwAMgAcABAACoAGgAPAAmABPAC6AG0APQAhABcgDSAHOAO4AfoBCADyALzAZIAAAAA.f_gAD_gAAAAA">>,
+    {ok, Actual} = consent_string:parse_b64(TCF),
 
-consent_string_range_with_legitimate_interests() ->
-    TCFv2Legitimate = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
-    {ok, Actual} = consent_string:parse_b64(TCFv2Legitimate),
-    io:format(user, "~p~n", [Actual]),
-    ?assertEqual(nope, Actual).
+    #consent {
+            vendors = #vendor_range {
+                num_entries = NumEntries,
+                entries = Entries
+            }
+    } = Actual,
+
+    ?assertEqual(Entries,
+                 [804,755,702,658,447,423,413,410,345,314,264,
+                  {253,254},238,231,210,185,157,155,132,122,109,
+                  {90,91},79,76, {71,72},69,60,52,50,47,45,
+                  {41,42},36,32,28,{23,25},21,{15,16},{10,12},2]).
+
 
 consent_string_wild_test() ->
     % ngrep -q port -d lo -W single port 8083 | grep '"consent"' | awk 'BEGIN {FS="\"consent\":\""} {print $2}' | cut -d '"' -f1
