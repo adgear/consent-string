@@ -42,8 +42,8 @@
 }).
 
 -record(consent_segment, {
-    type  :: consent_segment_type(),
-    entry :: consent_segment_entry()
+    type    :: consent_segment_type(),
+    segment :: consent_segment_entry()
 }).
 
 -record(entry_range, {
@@ -52,7 +52,7 @@
 }).
 
 -record(entry_bitfield, {
-    field :: binary()
+    fields :: binary()
 }).
 
 -record(vendor_bit_field, {

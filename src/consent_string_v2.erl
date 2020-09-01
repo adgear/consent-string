@@ -1,7 +1,10 @@
 -module(consent_string_v2).
 -include("consent_string.hrl").
 
--export([parse/1]).
+-export([
+    parse/1,
+    parse_range_or_bitfield/1
+]).
 
 -spec parse(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
@@ -63,7 +66,6 @@ parse(_) ->
 
 %% private
 
-
 %% parse_vendors(<<MaxVendorId:16, IsRangeEncoding:1, Rest/bitstring>>)
 -spec parse_vendors(binary()) -> {pos_integer(), #vendor_bit_field{}, bitstring()}
                                | {error, invalid_vendors}.
@@ -114,10 +116,23 @@ parse_publisher_restriction_single_entry(<<PurposeId:6, RestrictionType:2, NumEn
             {error, invalid_publisher_restriction_invalid_entry}
     end.
 
-%% parse_publisher_restriction_single_entry(Bin) ->
-%%     io:format("~p: ~p~n", [?FUNCTION_NAME, Bin]),
-%%     {error, invalid_publisher_restriction_blargh}.
+parse_range_or_bitfield(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
+    {ok, MaxVendorId, #entry_bitfield { fields = Bin }, Rest};
+parse_range_or_bitfield(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
+    case parse_entries(Rest, NumEntries, []) of
+        {ok, EntryRest, Entries} ->
+            {ok,
+             MaxVendorId,
+             #entry_range {
+                num_entries = NumEntries,
+                entries = Entries
+             },
+             EntryRest};
+        {error, invalid_entries} ->
+            {error, invalid_entries}
+    end.
 
+%% TODO replace with 'parse_range_or_bitfield'
 parse_vendor_legitimate_interests(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
     {ok, MaxVendorId, #vendor_legitimate_interests_entry { fields = Bin }, Rest};
 parse_vendor_legitimate_interests(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->

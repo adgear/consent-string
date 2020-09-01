@@ -25,18 +25,44 @@ parse(<<2:6, _/bitstring>> = Bin) ->
 parse(_) ->
     {error, invalid_consent_string}.
 
+%% tcf segments are a v2 thing. We omitt 0 because that's the core
+%%  string
+parse_segment(<<1:3, Blob/bitstring>>) ->
+    case consent_string_v2:parse_range_or_bitfield(Blob) of
+        {ok, MaxVendorId, Segment, _Rest} ->
+            #consent_segment {
+                 type = 1,
+                 segment = #consent_segment_entry_disclosed_vendors {
+                     max_vendor_id = MaxVendorId,
+                     entries = Segment
+                 }
+            };
+         {error, Reason} ->
+            {error, Reason}
+    end;
+parse_segment(<<2:3, _Rest/bitstring>>) ->
+    not_implemented;
+parse_segment(<<3:3, _Rest/bitstring>>) ->
+    not_implemented.
+
 -spec parse_b64(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
 parse_b64(Bin) ->
     Parts = binary:split(Bin, <<".">>, [global]),
-    [CoreString | Segments] = Parts,
+    [CoreString | Segments] = lists:map(fun(X) -> web_base64_decode(X) end,
+                                        Parts),
 
-    %% https://github.com/InteractiveAdvertisingBureau/GDPR-Transparency-and-Consent-Framework/blob/master/TCFv2/IAB%20Tech%20Lab%20-%20Consent%20string%20and%20vendor%20list%20formats%20v2.md#tc-string-format
-    %% according to TCFv2 standard, after the core string, any of the
-    %% the other strings can happen at least once:
-    %%   [Core String].[Disclosed Vendors].[AllowedVendors].[Publisher TC]
-    parse(web_base64_decode(CoreString)).
+    ParsedSegments = lists:map(fun(X) -> parse_segment(X) end,
+                               Segments),
+
+    case  parse(CoreString) of
+        {ok, Consent} ->
+            {ok, Consent#consent { segments = ParsedSegments }};
+        {error, _} ->
+            {error, invalid_consent_string}
+    end.
+
 
 -spec purpose(pos_integer() | [pos_integer()], consent()) ->
     boolean().
