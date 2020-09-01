@@ -36,6 +36,8 @@
 }).
 
 -record(consent_segment_entry_allowed_vendors, {
+    max_vendor_id :: pos_integer(),
+    entries       :: range_or_bitfield()
 }).
 
 -record(consent_segment_entry_publisher_purposes, {

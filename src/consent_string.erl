@@ -40,8 +40,19 @@ parse_segment(<<1:3, Blob/bitstring>>) ->
          {error, Reason} ->
             {error, Reason}
     end;
-parse_segment(<<2:3, _Rest/bitstring>>) ->
-    not_implemented;
+parse_segment(<<2:3, Blob/bitstring>>) ->
+    case consent_string_v2:parse_range_or_bitfield(Blob) of
+        {ok, MaxVendorId, Segment, _Rest} ->
+            #consent_segment {
+                 type = 2,
+                 segment = #consent_segment_entry_allowed_vendors {
+                     max_vendor_id = MaxVendorId,
+                     entries = Segment
+                 }
+            };
+         {error, Reason} ->
+            {error, Reason}
+    end;
 parse_segment(<<3:3, _Rest/bitstring>>) ->
     not_implemented.
 
