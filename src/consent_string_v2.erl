@@ -49,10 +49,10 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
         case parse_vendors(Blob) of
             {error, _} ->
                 {error, invalid_consent_string};
-            {ok, MaxVendorId, Vendors, VendorRest} ->
+            {ok, MaxVendorId, EncodingType, Vendors, VendorRest} ->
                 {Consent#consent {
                     max_vendor_id = MaxVendorId,
-                    encoding_type = undefined, % IsRangeEncoding, % refactor messed this up will have to think about how to do this now
+                    encoding_type = EncodingType,
                     vendors = Vendors
                  }, VendorRest}
         end,
@@ -92,12 +92,12 @@ convert_bit_chars(Char1, Char2) ->
 
 parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring,
                 Rest/bitstring>>) ->
-    {ok, MaxVendorId, #vendor_bit_field { fields = Bin }, Rest};
+    {ok, MaxVendorId, 0, #vendor_bit_field { fields = Bin }, Rest};
 parse_vendors(<<MaxVendorId:16, 1:1, NumEntries:12,
                 Rest/bitstring>>) ->
     case parse_entries(Rest, NumEntries, []) of
         {ok, EntryRest, Entries} ->
-            {ok, MaxVendorId,
+            {ok, MaxVendorId, 1,
                  #vendor_range {
                      default_consent = undefined,
                      num_entries = NumEntries,

@@ -52,7 +52,7 @@ consent_string_v2_test() ->
     ?assertEqual(Actual#consent.publisher_cc, <<"FR">>),
     ?assertEqual(Actual#consent.purposes_allowed, <<255, 192, 0>>),
     ?assertEqual(Actual#consent.max_vendor_id, 811),
-    ?assertEqual(Actual#consent.encoding_type, undefined).
+    ?assertEqual(Actual#consent.encoding_type, 0).
 
 consent_string_range_test() ->
     TCF = <<"CO4cLaDO4cMW-AHABBENA0CsAP_AAH_AAAAAGSQKAABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDJAMkgNAACAAWAA8ACoAFwAMgAcABAACoAGgAPAAmABPAC6AG0APQAhABcgDSAHOAO4AfoBCADyALzAZIAAAAA.f_gAD_gAAAAA">>,
