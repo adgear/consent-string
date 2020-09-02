@@ -53,8 +53,20 @@ parse_segment(<<2:3, Blob/bitstring>>) ->
          {error, Reason} ->
             {error, Reason}
     end;
-parse_segment(<<3:3, _Rest/bitstring>>) ->
-    not_implemented.
+parse_segment(<<3:3, PubPurposesConsent:24/bitstring, PubPurposesLITransparency:24/bitstring,
+                NumCustomPurposes:6, CustomPurposesConsent:NumCustomPurposes/bitstring,
+                CustomPurposesLI:NumCustomPurposes/bitstring,
+                _Rest/bitstring>>) ->
+    #consent_segment {
+       type = 3,
+       segment = #consent_segment_entry_publisher_purposes {
+           pub_purposes_consent = PubPurposesConsent,
+           pub_purposes_li_transparency = PubPurposesLITransparency,
+           num_custom_purposes = NumCustomPurposes,
+           custom_purposes_consent = CustomPurposesConsent,
+           custom_purposes_li = CustomPurposesLI
+       }
+    }.
 
 -spec parse_b64(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.

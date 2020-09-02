@@ -41,6 +41,11 @@
 }).
 
 -record(consent_segment_entry_publisher_purposes, {
+    pub_purposes_consent         :: binary(),
+    pub_purposes_li_transparency :: binary(),
+    num_custom_purposes          :: pos_integer(),
+    custom_purposes_consent      :: binary(),
+    custom_purposes_li           :: binary()
 }).
 
 -record(consent_segment, {
