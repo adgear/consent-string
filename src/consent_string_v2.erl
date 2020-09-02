@@ -26,41 +26,62 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
     PublisherConsentCountry = convert_bit_chars(PublisherCC1, PublisherCC2),
     ConsentLanguage = convert_bit_chars(ConsentLanguage1, ConsentLanguage2),
 
-    case parse_vendors(Blob) of
-        {error, invalid_vendors} -> {error, invalid_consent_string};
-        {ok, MaxVendorId, Vendors, AfterVendorBlob} ->
-            case parse_vendor_legitimate_interests(AfterVendorBlob) of
-                {error, invalid_vendor_legitimate_interests} -> {error, invalid_consent_string};
-                {ok, _MaxVendorLIId, LegitimateInterests, AfterPubLIBlob} ->
-                    case parse_publisher_restrictions(AfterPubLIBlob) of
-                        {error, invalid_publisher_restrictions} -> {error, invalid_publisher_restriction};
-                        {ok, Restrictions, _Rest} ->
-                            {ok, #consent {
-                                version = Version,
-                                created = Created,
-                                last_updated = LastUpdated,
-                                cmp_id = CmpId,
-                                cmp_version = CmpVersion,
-                                consent_screen = ConsentScreen,
-                                consent_language = ConsentLanguage,
-                                vendor_list_version = VendorListVersion,
-                                tcf_policy_version = TcfPolicyVersion,
-                                is_service_specific = IsServiceSpecific,
-                                use_non_standard_stacks = UseNonStandardStacks,
-                                special_feature_optins = SpecialFeatureOptins,
-                                purposes_li_transparency = PurposesLITransparency,
-                                purposes_one_treatment = PurposesOneTreatment,
-                                publisher_cc = PublisherConsentCountry,
-                                purposes_allowed = PurposesConsent,
-                                max_vendor_id = MaxVendorId,
-                                encoding_type = undefined, % IsRangeEncoding, % refactor messed this up will have to think about how to do this now
-                                vendors = Vendors,
-                                vendor_legitimate_interests = LegitimateInterests,
-                                publisher_restrictions = Restrictions
-                            }}
-                    end
-            end
-    end;
+    Consent = #consent {
+       version = Version,
+       created = Created,
+       last_updated = LastUpdated,
+       cmp_id = CmpId,
+       cmp_version = CmpVersion,
+       consent_screen = ConsentScreen,
+       consent_language = ConsentLanguage,
+       vendor_list_version = VendorListVersion,
+       tcf_policy_version = TcfPolicyVersion,
+       is_service_specific = IsServiceSpecific,
+       use_non_standard_stacks = UseNonStandardStacks,
+       special_feature_optins = SpecialFeatureOptins,
+       purposes_li_transparency = PurposesLITransparency,
+       purposes_one_treatment = PurposesOneTreatment,
+       publisher_cc = PublisherConsentCountry,
+       purposes_allowed = PurposesConsent
+    },
+
+    {ConsentWithVendors, AfterVendorBlob}  =
+        case parse_vendors(Blob) of
+            {error, _} ->
+                {error, invalid_consent_string};
+            {ok, MaxVendorId, Vendors, VendorRest} ->
+                {Consent#consent {
+                    max_vendor_id = MaxVendorId,
+                    encoding_type = undefined, % IsRangeEncoding, % refactor messed this up will have to think about how to do this now
+                    vendors = Vendors
+                 }, VendorRest}
+        end,
+
+    {ConsentWithLI, AfterPubLIBlob} =
+        case parse_vendor_legitimate_interests(AfterVendorBlob) of
+            {error, _} ->
+                {error, invalid_consent_string};
+            {ok, MaxVendorLIId, LegitimateInterests, Rest} ->
+                {ConsentWithVendors#consent {
+                    vendor_legitimate_interests = #vendor_legitimate_interests {
+                        max_vendor_id = MaxVendorLIId,
+                        interests = LegitimateInterests
+                    }
+                 }, Rest}
+        end,
+
+    {ConsentWithPubRestrict, _UnusedRest} =
+        case parse_publisher_restrictions(AfterPubLIBlob) of
+            {error, _} ->
+                {error, invalid_consent_string};
+            {ok, Restrictions, _Rest} ->
+                {ConsentWithLI#consent {
+                         publisher_restrictions = Restrictions
+                }, _Rest}
+        end,
+
+    ConsentFinal = ConsentWithPubRestrict,
+    {ok, ConsentFinal};
 parse(_) ->
     {error, invalid_consent_string}.
 
@@ -142,11 +163,12 @@ parse_range_or_bitfield(<<MaxVendorId:16, 1:1,
     end.
 
 %% TODO replace with 'parse_range_or_bitfield'
-parse_vendor_legitimate_interests(<<MaxVendorId:16, 0:1,
-                                    Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
-    {ok, MaxVendorId, #vendor_legitimate_interests_entry { fields = Bin }, Rest};
-parse_vendor_legitimate_interests(<<MaxVendorId:16, 1:1,
-                                    NumEntries:12, Rest/bitstring>>) ->
+parse_vendor_legitimate_interests(
+        <<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
+    {ok, MaxVendorId,
+         #vendor_legitimate_interests_entry { fields = Bin }, Rest};
+parse_vendor_legitimate_interests(
+        <<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
     case parse_entries(Rest, NumEntries, []) of
         {ok, EntryRest, Entries} ->
             {ok,
