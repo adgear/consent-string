@@ -53,8 +53,11 @@ parse_segment(<<2:3, Blob/bitstring>>) ->
          {error, Reason} ->
             {error, Reason}
     end;
-parse_segment(<<3:3, PubPurposesConsent:24/bitstring, PubPurposesLITransparency:24/bitstring,
-                NumCustomPurposes:6, CustomPurposesConsent:NumCustomPurposes/bitstring,
+parse_segment(<<3:3,
+                PubPurposesConsent:24/bitstring,
+                PubPurposesLITransparency:24/bitstring,
+                NumCustomPurposes:6,
+                CustomPurposesConsent:NumCustomPurposes/bitstring,
                 CustomPurposesLI:NumCustomPurposes/bitstring,
                 _Rest/bitstring>>) ->
     #consent_segment {
