@@ -1,4 +1,4 @@
--module(v2_allowed_vendors).
+-module(v2_allowed_vendors_test).
 -include("consent_string.hrl").
 -include_lib("eunit/include/eunit.hrl").
 

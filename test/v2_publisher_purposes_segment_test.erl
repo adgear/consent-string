@@ -1,4 +1,4 @@
--module(v2_publisher_purposes_segment).
+-module(v2_publisher_purposes_segment_test).
 -include("consent_string.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
