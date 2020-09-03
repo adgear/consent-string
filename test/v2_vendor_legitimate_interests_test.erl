@@ -44,5 +44,6 @@ consent_string_with_vendor_legitimate_interests_range_test() ->
          122,109,93,79,76,60,52,42,32,28,25,23,21,
          15,11,2],
 
+    ?assertEqual(26, NumEntries),
     ?assertEqual(804, MaxVendorId),
     ?assertEqual(Entries, ExpectedLegitimateEntries).

@@ -92,8 +92,7 @@ print_v2(Consent) ->
 
        vendors = Vendors,
        vendor_legitimate_interests = VendorsLI,
-       publisher_restrictions = PublisherRestrictions,
-       segments = Segments
+       publisher_restrictions = PublisherRestrictions
     } = Consent,
 
     io:format("  version             : ~p~n", [Version]),
@@ -110,5 +109,4 @@ print_v2(Consent) ->
     io:format("  vendors             : ~p~n", [Vendors]),
     io:format("  vendor_li           : ~p~n", [VendorsLI]),
     io:format("  publisher restrict  : ~p~n", [PublisherRestrictions]),
-    io:format("  segments            : ~p~n", [Segments]),
     io:format("~n").

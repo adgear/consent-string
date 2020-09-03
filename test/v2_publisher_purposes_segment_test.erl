@@ -7,14 +7,14 @@ publisher_purposes_test() ->
     {ok, Actual} = consent_string:parse_b64(TCF),
 
     #consent {
-       segments = Segments
        disclosed_vendors = DC,
        allowed_vendors = AV,
        publisher_tc = PTC
     } = Actual,
 
-    ?assertEqual(1, length(Segments)),
-    [FirstSeg | _] = Segments,
+    ?assertEqual(undefined, DC),
+    ?assertEqual(undefined, AV),
+    ?assertNotEqual(undefined, PTC),
 
     #consent_segment {
        type = SegType,
@@ -25,7 +25,7 @@ publisher_purposes_test() ->
            custom_purposes_consent = CustomPurposes,
            custom_purposes_li = CustomPurposesLI
        }
-    } = FirstSeg,
+    } = PTC,
 
     ?assertEqual(3, SegType),
     ?assertEqual(<<255, 192, 0>>, PPC),

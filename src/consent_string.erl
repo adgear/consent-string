@@ -89,7 +89,6 @@ parse_b64(Bin) ->
     case parse(CoreString) of
         {ok, Consent} ->
             {ok, Consent#consent {
-                   segments = ParsedSegments, %% TODO REMOVE ME
                    disclosed_vendors = DisclosedVendorSegment,
                    allowed_vendors = AllowedVendorSegment,
                    publisher_tc = PublisherTCSegment

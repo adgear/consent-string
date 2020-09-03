@@ -84,6 +84,8 @@ consent_string_range_test() ->
             }
     } = Actual,
 
+    ?assertEqual(40, NumEntries),
+
     ?assertEqual(Entries,
                  [804,755,702,658,447,423,413,410,345,314,264,
                   {253,254},238,231,210,185,157,155,132,122,109,
