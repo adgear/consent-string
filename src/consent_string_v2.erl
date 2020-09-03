@@ -3,6 +3,7 @@
 
 -export([
     parse/1,
+    purpose/2,
     parse_range_or_bitfield/1
 ]).
 
@@ -12,15 +13,12 @@
 parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
         ConsentScreen:6, ConsentLanguage1:6, ConsentLanguage2:6,
         VendorListVersion:12,
-
         TcfPolicyVersion:6, IsServiceSpecific:1, UseNonStandardStacks:1,
         SpecialFeatureOptins:12,
-
         PurposesConsent:24/bitstring,
         PurposesLITransparency:24/bitstring,
         PurposesOneTreatment:1,
         PublisherCC1:6, PublisherCC2:6,
-
         Blob/bitstring>>) ->
 
     PublisherConsentCountry = convert_bit_chars(PublisherCC1, PublisherCC2),
@@ -45,40 +43,14 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
        purposes_allowed = PurposesConsent
     },
 
-    {ConsentWithVendors, AfterVendorBlob}  =
-        case parse_vendors(Blob) of
-            {error, _} ->
-                {error, invalid_consent_string};
-            {ok, MaxVendorId, EncodingType, Vendors, VendorRest} ->
-                {Consent#consent {
-                    max_vendor_id = MaxVendorId,
-                    encoding_type = EncodingType,
-                    vendors = Vendors
-                 }, VendorRest}
-        end,
+    {ConsentWithVendors, AfterVendorBlob} =
+        augment_with_vendors(Consent, Blob),
 
     {ConsentWithLI, AfterPubLIBlob} =
-        case parse_vendor_legitimate_interests(AfterVendorBlob) of
-            {error, _} ->
-                {error, invalid_consent_string};
-            {ok, MaxVendorLIId, LegitimateInterests, Rest} ->
-                {ConsentWithVendors#consent {
-                    vendor_legitimate_interests = #vendor_legitimate_interests {
-                        max_vendor_id = MaxVendorLIId,
-                        interests = LegitimateInterests
-                    }
-                 }, Rest}
-        end,
+        augment_with_vendor_li(ConsentWithVendors, AfterVendorBlob),
 
-    {ConsentWithPubRestrict, _UnusedRest} =
-        case parse_publisher_restrictions(AfterPubLIBlob) of
-            {error, _} ->
-                {error, invalid_consent_string};
-            {ok, Restrictions, _Rest} ->
-                {ConsentWithLI#consent {
-                         publisher_restrictions = Restrictions
-                }, _Rest}
-        end,
+    {ConsentWithPubRestrict, _} =
+        augment_with_pub_restrictions(ConsentWithLI, AfterPubLIBlob),
 
     case ConsentWithPubRestrict of
         error -> {error, invalid_consent_string};
@@ -87,7 +59,96 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
 parse(_) ->
     {error, invalid_consent_string}.
 
+
+-spec purpose(pos_integer() | [pos_integer()], consent()) ->
+    boolean().
+
+purpose(PurposeId, #consent {} = Consent) when is_integer(PurposeId)->
+    purpose([PurposeId], Consent);
+purpose([], _Consent) ->
+    true;
+purpose([PurposeId | T], #consent {
+        purposes_allowed = PurposesAllowed
+    } = Consent) ->
+
+    case check_bit(PurposeId, PurposesAllowed) of
+        true ->
+            purpose(T, Consent);
+        false ->
+            false
+    end.
+
+-spec parse_range_or_bitfield(binary()) ->
+          {ok, pos_integer(), range_or_bitfield(), binary()}.
+
+parse_range_or_bitfield(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
+    {ok, MaxVendorId, #entry_bitfield { fields = Bin }, Rest};
+parse_range_or_bitfield(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
+    case parse_entries(Rest, NumEntries, []) of
+        {ok, EntryRest, Entries} ->
+            {ok,
+             MaxVendorId,
+             #entry_range {
+                num_entries = NumEntries,
+                entries = Entries
+             },
+             EntryRest};
+        {error, invalid_entries} ->
+            {error, invalid_entries}
+    end.
+
 %% private
+
+augment_with_vendors(error, _) ->
+    {error, invalid_vendor_blob};
+augment_with_vendors(Consent, Blob) ->
+    case parse_vendors(Blob) of
+        {error, _} ->
+            {error, invalid_consent_string};
+        {ok, MaxVendorId, EncodingType, Vendors, VendorRest} ->
+            {Consent#consent {
+               max_vendor_id = MaxVendorId,
+               encoding_type = EncodingType,
+               vendors = Vendors
+              }, VendorRest}
+    end.
+
+augment_with_vendor_li(error, _) ->
+    {error, invalid_vendor_li};
+augment_with_vendor_li(Consent, Blob) ->
+    case parse_vendor_legitimate_interests(Blob) of
+        {error, _} ->
+            {error, invalid_consent_string};
+        {ok, MaxVendorLIId, LegitimateInterests, Rest} ->
+            {Consent#consent {
+               vendor_legitimate_interests = #vendor_legitimate_interests {
+                   max_vendor_id = MaxVendorLIId,
+                   interests = LegitimateInterests
+               }
+             }, Rest}
+        end.
+
+augment_with_pub_restrictions(error, _) ->
+    {error, invalid_consent_string};
+augment_with_pub_restrictions(Consent, Blob) ->
+    case parse_publisher_restrictions(Blob) of
+        {error, _} ->
+            {error, invalid_consent_string};
+        {ok, Restrictions, Rest} ->
+            {Consent#consent {publisher_restrictions = Restrictions}, Rest}
+    end.
+
+check_bit(Index, BitString) ->
+    Index2 = Index - 1,
+    case BitString of
+        <<_:Index2/bitstring, Bit:1, _/bitstring>> ->
+            bit_to_boolean(Bit);
+        _ ->
+            false
+    end.
+
+bit_to_boolean(0) -> false;
+bit_to_boolean(1) -> true.
 
 convert_bit_chars(Char1, Char2) ->
     %% the spec encodes characters a-z in integer values of
@@ -141,25 +202,6 @@ parse_publisher_restriction_single_entry(<<PurposeId:6, RestrictionType:2,
             };
         {error, invalid_entries} ->
             {error, invalid_publisher_restriction_invalid_entry}
-    end.
-
--spec parse_range_or_bitfield(binary()) ->
-          {ok, pos_integer(), range_or_bitfield(), binary()}.
-
-parse_range_or_bitfield(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
-    {ok, MaxVendorId, #entry_bitfield { fields = Bin }, Rest};
-parse_range_or_bitfield(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
-    case parse_entries(Rest, NumEntries, []) of
-        {ok, EntryRest, Entries} ->
-            {ok,
-             MaxVendorId,
-             #entry_range {
-                num_entries = NumEntries,
-                entries = Entries
-             },
-             EntryRest};
-        {error, invalid_entries} ->
-            {error, invalid_entries}
     end.
 
 %% TODO replace with 'parse_range_or_bitfield'
