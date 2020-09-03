@@ -31,10 +31,22 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
                 consent_screen = ConsentScreen,
                 consent_language = ConsentLanguage,
                 vendor_list_version = VendorListVersion,
+                tcf_policy_version = undefined,
+                is_service_specific = undefined,
+                use_non_standard_stacks = undefined,
+                special_feature_optins = undefined,
                 purposes_allowed = PurposesAllowed,
+                purposes_li_transparency = undefined,
+                purposes_one_treatment = undefined,
+                publisher_cc = undefined,
                 max_vendor_id = MaxVendorId,
                 encoding_type = EncodingType,
-                vendors = Vendors
+                vendors = Vendors,
+                vendor_legitimate_interests = undefined,
+                publisher_restrictions = undefined,
+                disclosed_vendors = undefined,
+                allowed_vendors = undefined,
+                publisher_tc = undefined
             }}
     end;
 parse(_) ->

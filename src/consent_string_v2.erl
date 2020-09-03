@@ -80,7 +80,8 @@ purpose([PurposeId | T], #consent {
     end.
 
 -spec parse_range_or_bitfield(binary()) ->
-          {ok, pos_integer(), range_or_bitfield(), binary()}.
+          {ok, pos_integer(), range_or_bitfield(), binary()} |
+          {error, invalid_entries}.
 
 parse_range_or_bitfield(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
     {ok, MaxVendorId, #entry_bitfield { fields = Bin }, Rest};

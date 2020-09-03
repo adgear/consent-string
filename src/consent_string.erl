@@ -88,12 +88,13 @@ parse_b64(Bin) ->
 
     case parse(CoreString) of
         {ok, Consent} ->
-            {ok, Consent#consent {
-                   disclosed_vendors = DisclosedVendorSegment,
-                   allowed_vendors = AllowedVendorSegment,
-                   publisher_tc = PublisherTCSegment
-                 }
-            };
+            NewConsent = Consent#consent {
+                disclosed_vendors = DisclosedVendorSegment,
+                allowed_vendors = AllowedVendorSegment,
+                publisher_tc = PublisherTCSegment
+            },
+
+            {ok, NewConsent};
         {error, _} ->
             {error, invalid_consent_string}
     end.

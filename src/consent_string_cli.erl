@@ -12,8 +12,13 @@ main([Command | Args]) ->
         "parse" ->
             [Args1 | _] = Args,
             Input = list_to_binary(Args1),
-            {ok, ConsentRecord} = consent_string:parse_b64(Input),
-            pretty_print_consent(ConsentRecord);
+
+            case consent_string:parse_b64(Input) of
+                {ok, ConsentRecord} ->
+                    pretty_print_consent(ConsentRecord);
+                {error, invalid_consent_string} ->
+                    io:format("invalid consent string~n")
+            end;
         _ ->
             usage()
     end.

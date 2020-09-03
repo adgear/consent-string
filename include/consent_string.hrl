@@ -7,25 +7,25 @@
     consent_screen            :: pos_integer(),
     consent_language          :: binary(),
     vendor_list_version       :: pos_integer(),
-    tcf_policy_version        :: pos_integer(),
-    is_service_specific       :: pos_integer(),
-    use_non_standard_stacks   :: pos_integer(),
-    special_feature_optins    :: pos_integer(),
+    tcf_policy_version        :: undefined | pos_integer(),
+    is_service_specific       :: undefined | pos_integer(),
+    use_non_standard_stacks   :: undefined | pos_integer(),
+    special_feature_optins    :: undefined | pos_integer(),
     purposes_allowed          :: binary(),
 
     %% li = legitimate interests
-    purposes_li_transparency  :: binary(),
-    purposes_one_treatment    :: pos_integer(),
+    purposes_li_transparency  :: undefined | binary(),
+    purposes_one_treatment    :: undefined | pos_integer(),
 
     %% cc = consent country
-    publisher_cc              :: pos_integer(),
+    publisher_cc               :: undefined | pos_integer(),
 
     max_vendor_id             :: non_neg_integer(),
     encoding_type             :: 0..1,
     vendors                   :: vendor_bit_field() | vendor_range(), %% TODO: refactor this into range_or_bitfield
 
-    vendor_legitimate_interests :: vendor_legitimate_interests(),
-    publisher_restrictions      :: publisher_restrictions(),
+    vendor_legitimate_interests :: undefined | vendor_legitimate_interests(),
+    publisher_restrictions      :: undefined | publisher_restrictions(),
 
     %% consent segments comaing after the core segment
     disclosed_vendors :: undefined | consent_segment(),
