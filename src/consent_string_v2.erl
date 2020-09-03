@@ -4,7 +4,8 @@
 -export([
     parse/1,
     purpose/2,
-    parse_range_or_bitfield/1
+    parse_range_or_bitfield/1,
+    vendor/2
 ]).
 
 -spec parse(binary()) ->
@@ -97,6 +98,38 @@ parse_range_or_bitfield(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) 
             {error, invalid_entries}
     end.
 
+-spec vendor(pos_integer(), consent()) ->
+    boolean().
+
+vendor(VendorId, #consent {
+        max_vendor_id = MaxVendorId,
+        vendors = #vendor_bit_field {
+            fields = Vendors
+        }
+    }) when VendorId =< MaxVendorId ->
+
+    check_bit(VendorId, Vendors);
+vendor(VendorId, #consent {
+        max_vendor_id = MaxVendorId,
+        vendors = #vendor_range {
+            default_consent = 0,
+            entries = Entries
+        }
+    }) when VendorId =< MaxVendorId ->
+
+    search_entries(VendorId, Entries);
+vendor(VendorId, #consent {
+        max_vendor_id = MaxVendorId,
+        vendors = #vendor_range {
+            default_consent = 1,
+            entries = Entries
+        }
+    }) when VendorId =< MaxVendorId ->
+
+    negate(search_entries(VendorId, Entries));
+vendor(_, _) ->
+    false.
+
 %% private
 
 augment_with_vendors(error, _) ->
@@ -154,6 +187,9 @@ convert_bit_chars(Char1, Char2) ->
     %% the spec encodes characters a-z in integer values of
     %% [a=0..z=25]
     list_to_binary([65 + Char1, 65 + Char2]).
+
+negate(false) -> true;
+negate(true) -> false.
 
 %% TODO: this can be refactored once tcv1 gets dropped
 parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
@@ -250,3 +286,12 @@ parse_entries(<<1:1, Start:16, End:16, Rest/bitstring>>, N, Acc) ->
     parse_entries(Rest, N - 1, [{Start, End} | Acc]);
 parse_entries(_, _, _) ->
     {error, invalid_entries}.
+
+search_entries(_Id, []) ->
+    false;
+search_entries(Id, [{Start, End} | _]) when Id > Start, Id < End->
+    true;
+search_entries(Id, [Value | _]) when Id =:= Value ->
+    true;
+search_entries(Id, [_ | T]) ->
+    search_entries(Id, T).

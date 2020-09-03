@@ -73,6 +73,29 @@ consent_string_v2_test() ->
     ?assertEqual(811, MaxVendorId),
     ?assertEqual(0, EncodingType).
 
+consent_string_v2_lookup_vendors_test() ->
+    TCF = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
+    {ok, Consent} = consent_string:parse_b64(TCF),
+
+    ?assertEqual(true, consent_string:vendor(1, Consent)),
+    ?assertEqual(true, consent_string:vendor(2, Consent)),
+    ?assertEqual(false, consent_string:vendor(3, Consent)),
+    ?assertEqual(false, consent_string:vendor(43, Consent)),
+    ?assertEqual(false, consent_string:vendor(46, Consent)),
+    ?assertEqual(false, consent_string:vendor(48, Consent)),
+    ?assertEqual(true, consent_string:vendor(70, Consent)),
+    ?assertEqual(true, consent_string:vendor(71, Consent)),
+    ?assertEqual(true, consent_string:vendor(72, Consent)),
+    ?assertEqual(true, consent_string:vendor(811, Consent)).
+
+consent_string_v2_lookup_purposes_test() ->
+    TCF = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
+    {ok, Consent} = consent_string:parse_b64(TCF),
+
+    ?assert(consent_string:purpose(lists:seq(1, 10), Consent)),
+    ?assertNot(consent_string:purpose(lists:seq(11, 24), Consent)),
+    ?assertNot(consent_string:purpose([1,2,3,11], Consent)).
+
 consent_string_range_test() ->
     TCF = <<"CO4cLaDO4cMW-AHABBENA0CsAP_AAH_AAAAAGSQKAABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDJAMkgNAACAAWAA8ACoAFwAMgAcABAACoAGgAPAAmABPAC6AG0APQAhABcgDSAHOAO4AfoBCADyALzAZIAAAAA.f_gAD_gAAAAA">>,
     {ok, Actual} = consent_string:parse_b64(TCF),
