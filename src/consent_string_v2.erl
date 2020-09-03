@@ -94,6 +94,7 @@ convert_bit_chars(Char1, Char2) ->
     %% [a=0..z=25]
     list_to_binary([65 + Char1, 65 + Char2]).
 
+%% TODO: this can be refactored once tcv1 gets dropped
 parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
     {ok, MaxVendorId, 0, #vendor_bit_field { fields = Bin }, Rest};
 parse_vendors(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->

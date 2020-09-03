@@ -82,9 +82,19 @@ parse_b64(Bin) ->
     ParsedSegments = lists:map(fun(X) -> parse_segment(X) end,
                                Segments),
 
-    case  parse(CoreString) of
+    DisclosedVendorSegment = find_segment(ParsedSegments, 1),
+    AllowedVendorSegment = find_segment(ParsedSegments, 2),
+    PublisherTCSegment = find_segment(ParsedSegments, 3),
+
+    case parse(CoreString) of
         {ok, Consent} ->
-            {ok, Consent#consent { segments = ParsedSegments }};
+            {ok, Consent#consent {
+                   segments = ParsedSegments, %% TODO REMOVE ME
+                   disclosed_vendors = DisclosedVendorSegment,
+                   allowed_vendors = AllowedVendorSegment,
+                   publisher_tc = PublisherTCSegment
+                 }
+            };
         {error, _} ->
             {error, invalid_consent_string}
     end.
@@ -109,6 +119,16 @@ vendor(_, _) ->
     false.
 
 %% private
+find_segment(Segments, Type) ->
+    Found = lists:search(
+        fun(#consent_segment { type = T }) -> T =:= Type end,
+        Segments),
+
+    case Found of
+        false -> undefined;
+        {value, V} -> V
+    end.
+
 padding(0) -> <<>>;
 padding(1) -> <<"===">>;
 padding(2) -> <<"==">>;

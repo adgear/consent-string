@@ -27,7 +27,12 @@
     vendor_legitimate_interests :: vendor_legitimate_interests(),
     publisher_restrictions      :: publisher_restrictions(),
 
-    segments :: list(consent_segment())
+    segments :: list(consent_segment()),
+
+    %% consent segments comaing after the core segment
+    disclosed_vendors :: undefined | consent_segment_disclosed_vendors(),
+    allowed_vendors   :: undefined | consent_segment_allowed_vendors(),
+    publisher_tc      :: undefined | consent_segment_publisher_tc()
 }).
 
 -record(consent_segment_entry_disclosed_vendors, {

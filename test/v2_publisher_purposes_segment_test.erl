@@ -5,7 +5,13 @@
 publisher_purposes_test() ->
     TCF = <<"CO4xE1AO4xE1AAKALANLA0CsAP_AAH_AABpYGYtd_X9fb2vj-_5999t0eY1f9_63v-wzjgeNs-8NyZ_X_L4Xr2MyvB34pq4KmR4Eu3LBAQVlHGHcTQmQwIkVqTLsak2Mq7NKJ7JEilMbM2dYGG1Pn8XTuZCY70_sf__z_3-_-___67YGXkEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7K4CPUACABAYgIwIgQYgoxZBAAAAAElEQAkAwIBEARAIAAQArQEIACJAEFgBIGAQACoGhYARRBKBIQZHBUcogQFSLRQTzRgAA.f_gAAAAAAAAA">>,
     {ok, Actual} = consent_string:parse_b64(TCF),
-    #consent { segments = Segments } = Actual,
+
+    #consent {
+       segments = Segments
+       disclosed_vendors = DC,
+       allowed_vendors = AV,
+       publisher_tc = PTC
+    } = Actual,
 
     ?assertEqual(1, length(Segments)),
     [FirstSeg | _] = Segments,
