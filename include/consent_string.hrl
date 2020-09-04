@@ -75,19 +75,9 @@
     entries         :: list()
 }).
 
--record(vendor_legitimate_interests_range, {
-    num_entries :: pos_integer(),
-    entries     :: list()
-}).
-
--record(vendor_legitimate_interests_entry, {
-    fields :: binary()
-}).
-
 -record(vendor_legitimate_interests, {
     max_vendor_id :: pos_integer(),
-    interests     :: vendor_legitimate_interests_range() |
-                     vendor_legitimate_interests_entry()
+    interests     :: range_or_bitfield()
 }).
 
 -record(publisher_restrictions_entry, {
@@ -145,5 +135,3 @@
 -type vendor_range() :: #vendor_range {}.
 
 -type vendor_legitimate_interests()       :: #vendor_legitimate_interests {}.
--type vendor_legitimate_interests_range() :: #vendor_legitimate_interests_range {}.
--type vendor_legitimate_interests_entry() :: #vendor_legitimate_interests_entry {}.

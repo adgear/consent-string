@@ -9,7 +9,7 @@ consent_string_range_with_legitimate_interests_test() ->
     #consent {
        vendor_legitimate_interests = #vendor_legitimate_interests {
            max_vendor_id = MaxVendorId,
-           interests = #vendor_legitimate_interests_entry {
+           interests = #entry_bitfield {
                fields = Bitfield
            }
        }
@@ -32,7 +32,7 @@ consent_string_with_vendor_legitimate_interests_range_test() ->
     #consent {
        vendor_legitimate_interests = #vendor_legitimate_interests {
            max_vendor_id = MaxVendorId,
-           interests = #vendor_legitimate_interests_range {
+           interests = #entry_range {
                num_entries = NumEntries,
                entries = Entries
            }

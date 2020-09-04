@@ -277,27 +277,8 @@ parse_publisher_restriction_single_entry(<<PurposeId:6, RestrictionType:2,
             {error, invalid_publisher_restriction_invalid_entry}
     end.
 
-%% TODO replace with 'parse_range_or_bitfield'
-parse_vendor_legitimate_interests(
-  <<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
-    {ok, MaxVendorId,
-         #vendor_legitimate_interests_entry { fields = Bin }, Rest};
-parse_vendor_legitimate_interests(
-        <<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) ->
-    case parse_entries(Rest, NumEntries, []) of
-        {ok, EntryRest, Entries} ->
-            {ok,
-             MaxVendorId,
-             #vendor_legitimate_interests_range {
-                 num_entries = NumEntries,
-                 entries = Entries
-             },
-             EntryRest};
-        {error, invalid_entries} ->
-            {error, invalid_vendor_legitimate_interests}
-    end;
-parse_vendor_legitimate_interests(_) ->
-    {error, invalid_vendor_legitimate_interests}.
+parse_vendor_legitimate_interests(Bin) ->
+    parse_range_or_bitfield(Bin).
 
 parse_entries(<<>>, 0, Acc) ->
     {ok, <<>>, Acc};
