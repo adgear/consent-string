@@ -151,9 +151,13 @@ consent_string_wild_test() ->
     {ok, File} = file:read_file("test/consent.data"),
     Data = binary:split(File, <<"\n">>, [global, trim]),
     lists:foreach(fun (Consent) ->
-        {ok, CS} = consent_string:parse_b64(Consent),
-        consent_string:purpose(1, CS),
-        consent_string:vendor(100, CS)
+        case consent_string:parse_b64(Consent) of
+            {ok, CS} ->
+                consent_string:purpose(1, CS),
+                consent_string:vendor(100, CS);
+            {error, invalid_consent_string} ->
+                ?assertEqual(invalid_consent_string, Consent)
+        end
     end, Data).
 
 consent_string_invalid_segment_test() ->
@@ -162,6 +166,17 @@ consent_string_invalid_segment_test() ->
     ?assertEqual({error, invalid_consent_string}, Ret).
 
 consent_string_invalid_segment_2_test() ->
-    TCF = <<"CO4xKq5O4xKrHDeACBFRAxCv_____3___wqIGPwAYAAgY-Bj8AGAAIGPgAA.f___7___4AA.gAAo">>,
-    Ret = consent_string:parse_b64(TCF),
-    ?assertEqual({error, invalid_consent_string}, Ret).
+    InvalidTCFStrings = [
+        <<"CO4kMJmO4kMKCDeACBFRAxCv_____3___wqIGPwAYAAgY-Bj8AGAAIGPgAA.f___7___4AA.gAAo">>,
+        <<"CO4xH1cO4xH2GBcABBFRA0CoAP_AAH_AAAqIGMwEgABAAVAAyACAAFoANYAwgDEAPQAhABHQCrgF1AMCAYQA0QBtAF5gMZAxmAYAAIACoAGQAQABiAIQAVcAuoBgQDCAG0AXmAAA.4UGAGgA-ACyAP0AiABUgDgAJLAjMBLECagE4ANDgoMA">>,
+        <<"CO4qY6IO4qY6ZBcABBFRA0CoAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4kunbBAQVlHGncTQgAwIkVqTLsYk2MjzNKJ7JEilsbM2dYGG1Pn8XTuZCZ70-sf__zv3-_-___6oGVkEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAAAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAA.4UGAGgA-ACyAP0AiABUgDgAJLAjMBLECagE4ANDgoMA">>,
+        <<"CO3ei5zO4Wu36BcABBFRAzCoAP_AAH_AAAqIGMwEwABAAVAAyACAAFoANQAuQBhAGIAegBCACOgFXALqAYEAwgBogDaALzAYyBjMA4AAQAFQAMgAgABaAFwAMQBCACrgF1AMCAYQA2gC8wAA.4X5gRgAHAB8AEYALIAj4BQgFEAMQAfoBEACbgFSANwAcAA_ICSwIiARJAjMBLECX4EzgJqATgAwYBocDg4HYQO7ggYBCyCRgFBgK2AV0gvzA">>,
+        <<"CO4HhpyO4HhqEBcABBFRAyCoAP_AAH_AAAqIF5kBKCNEQWJgUH5IEJsAQYxHwAQAAGAABAAAAAABAAAAIIQAACAAAAFAAAAKAAAAIAJAAAABAABAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAAACAAAAQAAAAAAAAAAAAAAgXmQAIIkQBAkBQQEgQCQAAgABAAAAAYAAAAAAAAAEAAAAghAAAAAAAAAAAAAgAAAAgAkAAAAAAAEAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAACAAA.4UGAHAAHAB8AFkAfoBEACpAHAASWBGYCWIE1AJwAaHBQYA">>,
+        <<"CO4xKq5O4xKrHDeACBFRAxCv_____3___wqIGPwAYAAgY-Bj8AGAAIGPgAA.f___7___4AA.gAAo">>,
+        <<"CO4xKPhO4xKP8BcABBFRA0CoAP_AAH_AAAqIGMwFgABAAVAAyACAAFQALQAagBbgDCAMQAhAB6AEIAI6AVcAuoBgQDCAGiANoAl4BeYDGQMZgHAACAAqABkAEAAKgAxACEAIQAVcAuoBgQDCAG0AXmAA.4UGAGgA-ACyAP0AiABUgDgAJLAjMBLECagE4ANDgoMA">>
+    ],
+
+    Maybe = lists:map(fun(X) -> consent_string:parse_b64(X) end, InvalidTCFStrings),
+    Uniq = lists:usort(Maybe),
+
+    ?assertEqual([{error, invalid_consent_string}], Uniq).
