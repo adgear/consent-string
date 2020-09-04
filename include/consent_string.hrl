@@ -18,11 +18,11 @@
     purposes_one_treatment    :: undefined | pos_integer(),
 
     %% cc = consent country
-    publisher_cc               :: undefined | pos_integer(),
+    publisher_cc              :: undefined | binary(),
 
     max_vendor_id             :: non_neg_integer(),
     encoding_type             :: 0..1,
-    vendors                   :: vendor_bit_field() | vendor_range(), %% TODO: refactor this into range_or_bitfield
+    vendors                   :: undefined | vendor_bit_field() | vendor_range(), %% TODO: refactor this into range_or_bitfield
 
     vendor_legitimate_interests :: undefined | vendor_legitimate_interests(),
     publisher_restrictions      :: undefined | publisher_restrictions(),

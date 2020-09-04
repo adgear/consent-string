@@ -38,10 +38,22 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
        is_service_specific = IsServiceSpecific,
        use_non_standard_stacks = UseNonStandardStacks,
        special_feature_optins = SpecialFeatureOptins,
+       purposes_allowed = PurposesConsent,
        purposes_li_transparency = PurposesLITransparency,
        purposes_one_treatment = PurposesOneTreatment,
        publisher_cc = PublisherConsentCountry,
-       purposes_allowed = PurposesConsent
+
+       %% for backwards compatibility (these get set in
+       %%   augment_with_vendors)
+       max_vendor_id = 0,
+       encoding_type = 0,
+       vendors = undefined,
+
+       vendor_legitimate_interests = undefined,
+       publisher_restrictions = undefined,
+       disclosed_vendors = undefined,
+       allowed_vendors = undefined,
+       publisher_tc = undefined
     },
 
     {ConsentWithVendors, AfterVendorBlob} =
@@ -133,8 +145,6 @@ vendor(_, _) ->
 
 %% private
 
-augment_with_vendors(error, _) ->
-    {error, invalid_vendor_blob};
 augment_with_vendors(Consent, Blob) ->
     case parse_vendors(Blob) of
         {error, _} ->
@@ -166,8 +176,6 @@ augment_with_pub_restrictions(error, _) ->
     {error, invalid_consent_string};
 augment_with_pub_restrictions(Consent, Blob) ->
     case parse_publisher_restrictions(Blob) of
-        {error, _} ->
-            {error, invalid_consent_string};
         {ok, Restrictions, Rest} ->
             {Consent#consent {publisher_restrictions = Restrictions}, Rest}
     end.
@@ -212,18 +220,28 @@ parse_vendors(_) ->
     {error, invalid_vendors}.
 
 parse_publisher_restrictions(<<0:12, Rest/bitstring>>) ->
-    {ok, #publisher_restrictions { num_pub_restrictions = 0 }, Rest};
+    {ok, #publisher_restrictions {
+            num_pub_restrictions = 0,
+            entries = []
+         }, Rest};
 parse_publisher_restrictions(<<NumPubRestrictions:12, RestrictionEntriesBlob/bitstring>>) ->
     {Rest, Entries} = parse_publisher_restriction_bundle(
-                        NumPubRestrictions, RestrictionEntriesBlob, []),
-    {ok, #publisher_restrictions { num_pub_restrictions = NumPubRestrictions,
-                                   entries = Entries }, Rest}.
+            NumPubRestrictions, RestrictionEntriesBlob, []),
+
+    PubRestrictions = #publisher_restrictions {
+        num_pub_restrictions = NumPubRestrictions,
+        entries = Entries
+    },
+
+    {ok, PubRestrictions, Rest}.
 
 parse_publisher_restriction_bundle(0, Rest, Acc) ->
     {Rest, Acc};
 parse_publisher_restriction_bundle(N, Blob, Acc) ->
-    {Rest, Entry} = parse_publisher_restriction_single_entry(Blob),
-    parse_publisher_restriction_bundle(N - 1, Rest, [Entry | Acc]).
+    case parse_publisher_restriction_single_entry(Blob) of
+        {Rest, Entry} ->
+            parse_publisher_restriction_bundle(N - 1, Rest, [Entry | Acc])
+    end.
 
 parse_publisher_restriction_single_entry(<<PurposeId:6, RestrictionType:2,
                                            NumEntries:12, Rest/bitstring>>) ->
