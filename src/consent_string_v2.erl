@@ -6,7 +6,8 @@
     purpose/2,
     purposes_li_transparency/2,
     parse_range_or_bitfield/1,
-    vendor/2
+    vendor/2,
+    vendor_legitimate_interests/2
 ]).
 
 -spec parse(binary()) ->
@@ -152,6 +153,7 @@ vendor(VendorId, #consent {
 vendor(VendorId, #consent {
         max_vendor_id = MaxVendorId,
         vendors = #vendor_range {
+            %% TODO double check -- this was change from v1
             default_consent = 1,
             entries = Entries
         }
@@ -161,7 +163,21 @@ vendor(VendorId, #consent {
 vendor(_, _) ->
     false.
 
+-spec vendor_legitimate_interests([pos_integer()], consent()) ->
+          boolean().
+
+vendor_legitimate_interests(Ids, #consent { vendor_legitimate_interests = VLI }) ->
+    #vendor_legitimate_interests { interests = Interests } = VLI,
+    lookup_range_or_entry(Ids, Interests).
+
 %% private
+
+lookup_range_or_entry(Ids, #entry_bitfield { fields = Fields }) ->
+    lists:foldl(fun(Id, Sum) -> check_bit(Id, Fields) and Sum end,
+                true, Ids);
+lookup_range_or_entry(Ids, #entry_range { entries = Entries }) ->
+    lists:foldl(fun(Id, Sum) -> search_entries(Id, Entries) and Sum end,
+                true, Ids).
 
 augment_with_vendors(Consent, Blob) ->
     case parse_vendors(Blob) of

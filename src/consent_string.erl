@@ -7,6 +7,7 @@
     purpose/2,
     purposes_li_transparency/2,
     vendor/2,
+    vendor_legitimate_interests/2,
 
     main/1
 ]).
@@ -135,6 +136,14 @@ vendor(VendorId, #consent { version = 2 } = Consent) ->
     consent_string_v2:vendor(VendorId, Consent);
 vendor(_, _) ->
     false.
+
+-spec vendor_legitimate_interests([pos_integer()], consent()) ->
+          undefined | boolean().
+
+vendor_legitimate_interests(_, #consent { version = 1 }) ->
+    undefined;
+vendor_legitimate_interests(Ids, #consent { version = 2 } = Consent) ->
+    consent_string_v2:vendor_legitimate_interests(Ids, Consent).
 
 %% private
 find_segment([], _) ->

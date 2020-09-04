@@ -47,3 +47,14 @@ consent_string_with_vendor_legitimate_interests_range_test() ->
     ?assertEqual(26, NumEntries),
     ?assertEqual(804, MaxVendorId),
     ?assertEqual(Entries, ExpectedLegitimateEntries).
+
+consent_string_legitimate_interests_lookup_test() ->
+    TCF = <<"CO4xF7sO4xF8KAHABBENA0CsAP_AAH_AAAAAGSQKQABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDGQGSAZJAaAAEAAsAB4AFQALgAZAA4ACAAFQANAAeABMACeAF0ANoAegBCAC5AGkAOcAdwA_QCEAHkAXmAyQAA.f_gAD_gAAAAA">>,
+    {ok, Consent} = consent_string:parse_b64(TCF),
+
+    ?assertEqual(false, consent_string_v2:vendor_legitimate_interests([1], Consent)),
+    ?assertEqual(true, consent_string_v2:vendor_legitimate_interests([2], Consent)),
+    ?assertEqual(false, consent_string_v2:vendor_legitimate_interests([1,2,3,4,5], Consent)),
+    ?assertEqual(true, consent_string_v2:vendor_legitimate_interests([2,11,15,21,23], Consent)),
+    ?assertEqual(true, consent_string_v2:vendor_legitimate_interests([804], Consent)),
+    ?assertEqual(false, consent_string_v2:vendor_legitimate_interests([805], Consent)).

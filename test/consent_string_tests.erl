@@ -122,8 +122,6 @@ consent_string_v2_performance_li_lookup_test() ->
     TCF = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
     {ok, Consent} = consent_string:parse_b64(TCF),
 
-    #consent { purposes_li_transparency = PLT } = Consent,
-
     ?assertEqual(false, consent_string:purposes_li_transparency(1, Consent)),
     ?assertEqual(false, consent_string:purposes_li_transparency([1, 20], Consent)),
     ?assertEqual(false, consent_string:purposes_li_transparency([1, 24], Consent)),
