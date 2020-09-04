@@ -119,15 +119,12 @@ vendor(_, _) ->
     false.
 
 %% private
-find_segment(Segments, Type) ->
-    Found = lists:search(
-        fun(#consent_segment { type = T }) -> T =:= Type end,
-        Segments),
-
-    case Found of
-        false -> undefined;
-        {value, V} -> V
-    end.
+find_segment([], _) ->
+    undefined;
+find_segment([#consent_segment { type = Type } = Segment | _], Type) ->
+    Segment;
+find_segment([_ | Rest], Type)->
+    find_segment(Rest, Type).
 
 padding(0) -> <<>>;
 padding(1) -> <<"===">>;
