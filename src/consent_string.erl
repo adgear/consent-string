@@ -5,6 +5,7 @@
     parse/1,
     parse_b64/1,
     purpose/2,
+    purposes_li_transparency/2,
     vendor/2,
 
     main/1
@@ -69,36 +70,53 @@ parse_segment(<<3:3,
            custom_purposes_consent = CustomPurposesConsent,
            custom_purposes_li = CustomPurposesLI
        }
-    }.
+      };
+parse_segment(_) ->
+    {error, bad_segment}.
 
 -spec parse_b64(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
 parse_b64(Bin) ->
-    Parts = binary:split(Bin, <<".">>, [global]),
+    Parts = binary:split(Bin, <<".">>, [global, trim]),
     [CoreString | Segments] = lists:map(fun(X) -> web_base64_decode(X) end,
                                         Parts),
 
     ParsedSegments = lists:map(fun(X) -> parse_segment(X) end,
                                Segments),
 
-    DisclosedVendorSegment = find_segment(ParsedSegments, 1),
-    AllowedVendorSegment = find_segment(ParsedSegments, 2),
-    PublisherTCSegment = find_segment(ParsedSegments, 3),
+    BadSegment = lists:any(fun(X) -> X =:= {error, bad_segment} end,
+                           ParsedSegments),
 
-    case parse(CoreString) of
-        {ok, Consent} ->
-            NewConsent = Consent#consent {
-                disclosed_vendors = DisclosedVendorSegment,
-                allowed_vendors = AllowedVendorSegment,
-                publisher_tc = PublisherTCSegment
-            },
+    case BadSegment of
+        true ->
+            {error, invalid_consent_string};
+        _ ->
+            DisclosedVendorSegment = find_segment(ParsedSegments, 1),
+            AllowedVendorSegment = find_segment(ParsedSegments, 2),
+            PublisherTCSegment = find_segment(ParsedSegments, 3),
 
-            {ok, NewConsent};
-        {error, _} ->
-            {error, invalid_consent_string}
+            case parse(CoreString) of
+                {ok, Consent} ->
+                    NewConsent = Consent#consent {
+                        disclosed_vendors = DisclosedVendorSegment,
+                        allowed_vendors = AllowedVendorSegment,
+                        publisher_tc = PublisherTCSegment
+                    },
+
+                    {ok, NewConsent};
+                {error, _} ->
+                    {error, invalid_consent_string}
+            end
     end.
 
+-spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
+          undefined | boolean().
+
+purposes_li_transparency(_, #consent { version = 1 }) ->
+    undefined;
+purposes_li_transparency(Purposes, #consent { version = 2 } = Consent) ->
+    consent_string_v2:purposes_li_transparency(Purposes, Consent).
 
 -spec purpose(pos_integer() | [pos_integer()], consent()) ->
     boolean().

@@ -4,6 +4,7 @@
 -export([
     parse/1,
     purpose/2,
+    purposes_li_transparency/2,
     parse_range_or_bitfield/1,
     vendor/2
 ]).
@@ -110,6 +111,23 @@ parse_range_or_bitfield(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) 
         {error, invalid_entries} ->
             {error, invalid_entries}
     end.
+
+-spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
+          undefined | boolean().
+
+purposes_li_transparency(PurposeId, Consent) when is_integer(PurposeId) ->
+    purposes_li_transparency([PurposeId], Consent);
+purposes_li_transparency([], _Consent) ->
+    true;
+purposes_li_transparency([PurposeId | T],
+                         #consent { purposes_li_transparency = PLT } = Consent) ->
+    case check_bit(PurposeId, PLT) of
+        true ->
+            purposes_li_transparency(T, Consent);
+        false ->
+            false
+    end.
+
 
 -spec vendor(pos_integer(), consent()) ->
     boolean().

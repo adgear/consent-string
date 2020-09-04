@@ -96,6 +96,39 @@ consent_string_v2_lookup_purposes_test() ->
     ?assertNot(consent_string:purpose(lists:seq(11, 24), Consent)),
     ?assertNot(consent_string:purpose([1,2,3,11], Consent)).
 
+consent_string_v2_core_string_variables_test() ->
+    TCF = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
+    {ok, Consent} = consent_string:parse_b64(TCF),
+
+    #consent {
+       tcf_policy_version = TPV,
+       is_service_specific = ISS,
+       use_non_standard_stacks = UNSS,
+       special_feature_optins = SFO,
+
+       purposes_li_transparency = PLT,
+       purposes_one_treatment = POT
+    } = Consent,
+
+    ?assertEqual(2, TPV),
+    ?assertEqual(1, ISS),
+    ?assertEqual(0, UNSS),
+    ?assertEqual(3072, SFO),
+    ?assertEqual(0, POT),
+    ?assertEqual(24, bit_size(PLT)),
+    ?assertEqual(0, POT).
+
+consent_string_v2_performance_li_lookup_test() ->
+    TCF = <<"CO4Hcm2O4Hcm2AKAJAFRAzCsAP_AAH_AAAqIGVtd_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EunLBAQdlHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1Pn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAIAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAAAAAAAAA">>,
+    {ok, Consent} = consent_string:parse_b64(TCF),
+
+    #consent { purposes_li_transparency = PLT } = Consent,
+
+    ?assertEqual(false, consent_string:purposes_li_transparency(1, Consent)),
+    ?assertEqual(false, consent_string:purposes_li_transparency([1, 20], Consent)),
+    ?assertEqual(false, consent_string:purposes_li_transparency([1, 24], Consent)),
+    ?assertEqual(true, consent_string:purposes_li_transparency(lists:seq(2, 10), Consent)).
+
 consent_string_range_test() ->
     TCF = <<"CO4cLaDO4cMW-AHABBENA0CsAP_AAH_AAAAAGSQKAABQAKAAyAB4AIAAVgAuADIAHAAQAAkgBSAFQALQAXgAyABoADwAIsARwBIACYAE-ALQAtgBtAD0AIQATYAnQBcgDSAHOAO6AfoB_AEIAJ0AVkAzQBnQDTgG_AUkAr4BeYDJAMkgNAACAAWAA8ACoAFwAMgAcABAACoAGgAPAAmABPAC6AG0APQAhABcgDSAHOAO4AfoBCADyALzAZIAAAAA.f_gAD_gAAAAA">>,
     {ok, Actual} = consent_string:parse_b64(TCF),
@@ -115,7 +148,6 @@ consent_string_range_test() ->
                   {90,91},79,76, {71,72},69,60,52,50,47,45,
                   {41,42},36,32,28,{23,25},21,{15,16},{10,12},2]).
 
-
 consent_string_wild_test() ->
     % ngrep -q port -d lo -W single port 8083 | grep '"consent"' | awk 'BEGIN {FS="\"consent\":\""} {print $2}' | cut -d '"' -f1
     {ok, File} = file:read_file("test/consent.data"),
@@ -125,3 +157,13 @@ consent_string_wild_test() ->
         consent_string:purpose(1, CS),
         consent_string:vendor(100, CS)
     end, Data).
+
+consent_string_invalid_segment_test() ->
+    TCF = <<"CO4kMJmO4kMKCDeACBFRAxCv_____3___wqIGPwAYAAgY-Bj8AGAAIGPgAA.f___7___4AA.gAAo">>,
+    Ret = consent_string:parse_b64(TCF),
+    ?assertEqual({error, invalid_consent_string}, Ret).
+
+consent_string_invalid_segment_2_test() ->
+    TCF = <<"CO4xKq5O4xKrHDeACBFRAxCv_____3___wqIGPwAYAAgY-Bj8AGAAIGPgAA.f___7___4AA.gAAo">>,
+    Ret = consent_string:parse_b64(TCF),
+    ?assertEqual({error, invalid_consent_string}, Ret).
