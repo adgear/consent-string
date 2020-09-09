@@ -1,16 +1,68 @@
 -record(consent, {
-    version             :: pos_integer(),
-    created             :: pos_integer(),
-    last_updated        :: pos_integer(),
-    cmp_id              :: pos_integer(),
-    cmp_version         :: pos_integer(),
-    consent_screen      :: pos_integer(),
-    consent_language    :: binary(),
-    vendor_list_version :: pos_integer(),
-    purposes_allowed    :: binary(),
-    max_vendor_id       :: non_neg_integer(),
-    encoding_type       :: 0..1,
-    vendors             :: vendor_bit_field() | vendor_range()
+    version                   :: pos_integer(),
+    created                   :: pos_integer(),
+    last_updated              :: pos_integer(),
+    cmp_id                    :: pos_integer(),
+    cmp_version               :: pos_integer(),
+    consent_screen            :: pos_integer(),
+    consent_language          :: binary(),
+    vendor_list_version       :: pos_integer(),
+    tcf_policy_version        :: undefined | pos_integer(),
+    is_service_specific       :: undefined | pos_integer(),
+    use_non_standard_stacks   :: undefined | pos_integer(),
+    special_feature_optins    :: undefined | pos_integer(),
+    purposes_allowed          :: binary(),
+
+    %% li = legitimate interests
+    purposes_li_transparency  :: undefined | binary(),
+    purposes_one_treatment    :: undefined | pos_integer(),
+
+    %% cc = consent country
+    publisher_cc              :: undefined | binary(),
+
+    max_vendor_id             :: non_neg_integer(),
+    encoding_type             :: 0..1,
+    vendors                   :: undefined | vendor_bit_field() | vendor_range(), %% TODO: refactor this into range_or_bitfield
+
+    vendor_legitimate_interests :: undefined | vendor_legitimate_interests(),
+    publisher_restrictions      :: undefined | publisher_restrictions(),
+
+    %% consent segments comaing after the core segment
+    disclosed_vendors :: undefined | consent_segment(),
+    allowed_vendors   :: undefined | consent_segment(),
+    publisher_tc      :: undefined | consent_segment()
+}).
+
+-record(consent_segment_entry_disclosed_vendors, {
+    max_vendor_id :: pos_integer(),
+    entries       :: range_or_bitfield()
+}).
+
+-record(consent_segment_entry_allowed_vendors, {
+    max_vendor_id :: pos_integer(),
+    entries       :: range_or_bitfield()
+}).
+
+-record(consent_segment_entry_publisher_purposes, {
+    pub_purposes_consent         :: binary(),
+    pub_purposes_li_transparency :: binary(),
+    num_custom_purposes          :: pos_integer(),
+    custom_purposes_consent      :: binary(),
+    custom_purposes_li           :: binary()
+}).
+
+-record(consent_segment, {
+    type    :: consent_segment_type(),
+    segment :: consent_segment_entry()
+}).
+
+-record(entry_range, {
+    num_entries :: pos_integer(),
+    entries     :: list()
+}).
+
+-record(entry_bitfield, {
+    fields :: binary()
 }).
 
 -record(vendor_bit_field, {
@@ -18,11 +70,68 @@
 }).
 
 -record(vendor_range, {
-    default_consent :: 0..1,
+    default_consent :: undefined | 0..1,
     num_entries     :: pos_integer(),
     entries         :: list()
 }).
 
+-record(vendor_legitimate_interests, {
+    max_vendor_id :: pos_integer(),
+    interests     :: range_or_bitfield()
+}).
+
+-record(publisher_restrictions_entry, {
+    restriction_type :: restriction_type(),
+    purpose_id       :: pos_integer(),
+    num_entries      :: pos_integer(),
+    entries          :: list()
+}).
+
+-record(publisher_restrictions, {
+    num_pub_restrictions :: non_neg_integer(),
+    entries              :: list(publisher_restrictions_entry())
+}).
+
 -type consent() :: #consent {}.
+
+-type consent_segment() :: #consent_segment {}.
+
+-type consent_segment_default() :: 0.
+-type consent_segment_disclosed_vendors() :: 1.
+-type consent_segment_allowed_vendors() :: 2.
+-type consent_segment_publisher_tc() :: 3.
+
+-type consent_segment_type() :: consent_segment_default() |
+                                consent_segment_disclosed_vendors() |
+                                consent_segment_allowed_vendors() |
+                                consent_segment_publisher_tc().
+
+-type consent_segment_entry() :: consent_segment_entry_disclosed_vendors() |
+                                 consent_segment_entry_allowed_vendors() |
+                                 consent_segment_entry_publisher_purposes().
+
+-type publisher_restrictions()       :: #publisher_restrictions {}.
+-type publisher_restrictions_entry() :: #publisher_restrictions_entry {}.
+
+-type entry_range() :: #entry_range {}.
+-type entry_bitfield() :: #entry_bitfield {}.
+-type range_or_bitfield() :: entry_range() | entry_bitfield().
+
+-type restriction_not_allowed_by_publisher() :: 0.
+-type restriction_require_consent() :: 1.
+-type restriction_require_legitimate_interest() :: 2.
+-type restriction_unknown() :: 3.
+
+-type restriction_type() :: restriction_not_allowed_by_publisher() |
+                            restriction_require_consent() |
+                            restriction_require_legitimate_interest() |
+                            restriction_unknown().
+
+-type consent_segment_entry_disclosed_vendors()  :: #consent_segment_entry_disclosed_vendors {}.
+-type consent_segment_entry_allowed_vendors()    :: #consent_segment_entry_allowed_vendors {}.
+-type consent_segment_entry_publisher_purposes() :: #consent_segment_entry_publisher_purposes {}.
+
 -type vendor_bit_field() :: #vendor_bit_field {}.
 -type vendor_range() :: #vendor_range {}.
+
+-type vendor_legitimate_interests()       :: #vendor_legitimate_interests {}.

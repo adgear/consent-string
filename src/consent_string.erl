@@ -5,168 +5,158 @@
     parse/1,
     parse_b64/1,
     purpose/2,
-    vendor/2
+    purposes_li_transparency/2,
+    vendor/2,
+    vendor_legitimate_interests/2,
+
+    main/1
 ]).
+
+-spec main(list()) -> no_return().
+main(Args) ->
+    consent_string_cli:main(Args).
 
 -spec parse(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
-parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
-        ConsentScreen:6, ConsentLanguage1:6, ConsentLanguage2:6,
-        VendorListVersion:12, PurposesAllowed:24/bitstring, MaxVendorId:16,
-        EncodingType:1, Rest/bitstring>>) ->
-
-    case parse_vendors(EncodingType, Rest) of
-        {error, invalid_vendors} ->
-            {error, invalid_consent_string};
-        Vendors ->
-            ConsentLanguage = list_to_binary([65 + ConsentLanguage1,
-                65 + ConsentLanguage2]),
-
-            {ok, #consent {
-                version = Version,
-                created = Created,
-                last_updated = LastUpdated,
-                cmp_id = CmpId,
-                cmp_version = CmpVersion,
-                consent_screen = ConsentScreen,
-                consent_language = ConsentLanguage,
-                vendor_list_version = VendorListVersion,
-                purposes_allowed = PurposesAllowed,
-                max_vendor_id = MaxVendorId,
-                encoding_type = EncodingType,
-                vendors = Vendors
-            }}
-    end;
+%% fisrt 6 bits is the version, which decides which parser to use.
+parse(<<1:6, _/bitstring>> = Bin) ->
+    consent_string_v1:parse(Bin);
+parse(<<2:6, _/bitstring>> = Bin) ->
+    consent_string_v2:parse(Bin);
 parse(_) ->
     {error, invalid_consent_string}.
+
+%% tcf segments are a v2 thing. We omitt 0 because that's the core
+%%  string
+parse_segment(<<1:3, Blob/bitstring>>) ->
+    case consent_string_v2:parse_range_or_bitfield(Blob) of
+        {ok, MaxVendorId, Segment, _Rest} ->
+            #consent_segment {
+                 type = 1,
+                 segment = #consent_segment_entry_disclosed_vendors {
+                     max_vendor_id = MaxVendorId,
+                     entries = Segment
+                 }
+            };
+         {error, Reason} ->
+            {error, Reason}
+    end;
+parse_segment(<<2:3, Blob/bitstring>>) ->
+    case consent_string_v2:parse_range_or_bitfield(Blob) of
+        {ok, MaxVendorId, Segment, _Rest} ->
+            #consent_segment {
+                 type = 2,
+                 segment = #consent_segment_entry_allowed_vendors {
+                     max_vendor_id = MaxVendorId,
+                     entries = Segment
+                 }
+            };
+         {error, Reason} ->
+            {error, Reason}
+    end;
+parse_segment(<<3:3,
+                PubPurposesConsent:24/bitstring,
+                PubPurposesLITransparency:24/bitstring,
+                NumCustomPurposes:6,
+                CustomPurposesConsent:NumCustomPurposes/bitstring,
+                CustomPurposesLI:NumCustomPurposes/bitstring,
+                _Rest/bitstring>>) ->
+    #consent_segment {
+       type = 3,
+       segment = #consent_segment_entry_publisher_purposes {
+           pub_purposes_consent = PubPurposesConsent,
+           pub_purposes_li_transparency = PubPurposesLITransparency,
+           num_custom_purposes = NumCustomPurposes,
+           custom_purposes_consent = CustomPurposesConsent,
+           custom_purposes_li = CustomPurposesLI
+       }
+      };
+parse_segment(_) ->
+    {error, bad_segment}.
 
 -spec parse_b64(binary()) ->
     {ok, consent()} | {error, invalid_consent_string}.
 
 parse_b64(Bin) ->
-    parse(web_base64_decode(Bin)).
+    Parts = binary:split(Bin, <<".">>, [global, trim]),
+    [CoreString | Segments] = lists:map(fun(X) -> web_base64_decode(X) end,
+                                        Parts),
+
+    ParsedSegments = lists:map(fun(X) -> parse_segment(X) end,
+                               Segments),
+
+    BadSegment = lists:any(fun(X) -> X =:= {error, bad_segment} end,
+                           ParsedSegments),
+
+    case BadSegment of
+        true ->
+            {error, invalid_consent_string};
+        _ ->
+            DisclosedVendorSegment = find_segment(ParsedSegments, 1),
+            AllowedVendorSegment = find_segment(ParsedSegments, 2),
+            PublisherTCSegment = find_segment(ParsedSegments, 3),
+
+            case parse(CoreString) of
+                {ok, Consent} ->
+                    NewConsent = Consent#consent {
+                        disclosed_vendors = DisclosedVendorSegment,
+                        allowed_vendors = AllowedVendorSegment,
+                        publisher_tc = PublisherTCSegment
+                    },
+
+                    {ok, NewConsent};
+                {error, _} ->
+                    {error, invalid_consent_string}
+            end
+    end.
+
+-spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
+          undefined | boolean().
+
+purposes_li_transparency(_, #consent { version = 1 }) ->
+    undefined;
+purposes_li_transparency(Purposes, #consent { version = 2 } = Consent) ->
+    consent_string_v2:purposes_li_transparency(Purposes, Consent).
 
 -spec purpose(pos_integer() | [pos_integer()], consent()) ->
     boolean().
 
-purpose(PurposeId, #consent {} = Consent) when is_integer(PurposeId)->
-    purpose([PurposeId], Consent);
-purpose([], _Consent) ->
-    true;
-purpose([PurposeId | T], #consent {
-        purposes_allowed = PurposesAllowed
-    } = Consent) ->
-
-    case check_bit(PurposeId, PurposesAllowed) of
-        true ->
-            purpose(T, Consent);
-        false ->
-            false
-    end.
+purpose(PurposeId, #consent { version = 1 } = Consent) ->
+    consent_string_v1:purpose(PurposeId, Consent);
+purpose(PurposeId, #consent { version = 2 } = Consent) ->
+    consent_string_v2:purpose(PurposeId, Consent).
 
 -spec vendor(pos_integer(), consent()) ->
     boolean().
 
-vendor(VendorId, #consent {
-        max_vendor_id = MaxVendorId,
-        vendors = #vendor_bit_field {
-            fields = Vendors
-        }
-    }) when VendorId =< MaxVendorId ->
-
-    check_bit(VendorId, Vendors);
-vendor(VendorId, #consent {
-        max_vendor_id = MaxVendorId,
-        vendors = #vendor_range {
-            default_consent = 0,
-            entries = Entries
-        }
-    }) when VendorId =< MaxVendorId ->
-
-    search_entries(VendorId, Entries);
-vendor(VendorId, #consent {
-        max_vendor_id = MaxVendorId,
-        vendors = #vendor_range {
-            default_consent = 1,
-            entries = Entries
-        }
-    }) when VendorId =< MaxVendorId ->
-
-    negate(search_entries(VendorId, Entries));
+vendor(VendorId, #consent { version = 1 } = Consent) ->
+    consent_string_v1:vendor(VendorId, Consent);
+vendor(VendorId, #consent { version = 2 } = Consent) ->
+    consent_string_v2:vendor(VendorId, Consent);
 vendor(_, _) ->
     false.
 
+-spec vendor_legitimate_interests([pos_integer()], consent()) ->
+          undefined | boolean().
+
+vendor_legitimate_interests(_, #consent { version = 1 }) ->
+    undefined;
+vendor_legitimate_interests(Ids, #consent { version = 2 } = Consent) ->
+    consent_string_v2:vendor_legitimate_interests(Ids, Consent).
+
 %% private
-boolean(0) -> false;
-boolean(1) -> true.
-
-check_bit(Index, BitString) ->
-    Index2 = Index - 1,
-    case BitString of
-        <<_:Index2/bitstring, Bit:1, _/bitstring>> ->
-            boolean(Bit);
-        _ ->
-            false
-    end.
-
-negate(false) -> true;
-negate(true) -> false.
+find_segment([], _) ->
+    undefined;
+find_segment([#consent_segment { type = Type } = Segment | _], Type) ->
+    Segment;
+find_segment([_ | Rest], Type)->
+    find_segment(Rest, Type).
 
 padding(0) -> <<>>;
 padding(1) -> <<"===">>;
 padding(2) -> <<"==">>;
 padding(3) -> <<"=">>.
-
-parse_vendors(0, Bin) ->
-    #vendor_bit_field {
-        fields = Bin
-    };
-parse_vendors(1, <<DefaultConsent:1, NumEntries:12, Rest/bitstring>>) ->
-    case parse_entries(Rest, NumEntries, []) of
-        {ok, Entries} ->
-            #vendor_range {
-                default_consent = DefaultConsent,
-                num_entries = NumEntries,
-                entries = Entries
-            };
-        {error, invalid_entries} ->
-            {error, invalid_vendors}
-    end;
-parse_vendors(_, _) ->
-    {error, invalid_vendors}.
-
-parse_entries(<<>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:1>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:2>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:3>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:4>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:5>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:6>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:7>>, 0, Acc) ->
-    {ok, Acc};
-parse_entries(<<0:1, Single:16, Rest/bitstring>>, N, Acc) ->
-    parse_entries(Rest, N - 1, [Single | Acc]);
-parse_entries(<<1:1, Start:16, End:16, Rest/bitstring>>, N, Acc) ->
-    parse_entries(Rest, N - 1, [{Start, End} | Acc]);
-parse_entries(_, _, _) ->
-    {error, invalid_entries}.
-
-search_entries(_Id, []) ->
-    false;
-search_entries(Id, [{Start, End} | _]) when Id > Start, Id < End->
-    true;
-search_entries(Id, [Value | _]) when Id =:= Value ->
-    true;
-search_entries(Id, [_ | T]) ->
-    search_entries(Id, T).
 
 web_base64_decode(Bin) ->
     Bin2 = binary:replace(Bin, <<"-">>, <<"+">>, [global]),

@@ -7,20 +7,46 @@ IAB consent-string library
 ## API
 
 ```erlang
-1> {ok, Consent} = consent_string:parse_b64(<<"BAAAAAAOYa7j0AcABBENBk-AAAAhGAKAAyAAIABoAIAAcgA0ACYADgAOQBAw">>).
-{ok,{consent,1,0,15442098420,28,1,1,<<"EN">>,100,
+%% for v1
+1> consent_string:parse_b64(<<"BAAAAAAOYa7j0AcABBENBk-AAAAhGAKAAyAAIABoAIAAcgA0ACYADgAOQBAw">>).
+{ok,{consent,1,0,15442098420,28,1,1,<<"EN">>,100,undefined,
+             undefined,undefined,undefined,
              <<248,0,0>>,
-             529,1,
-             {vendor_range,0,10,[25,2,13,32,57,52,76,56,114,259]}}}
+             undefined,undefined,undefined,529,1,
+             {vendor_range,0,10,[259,114,56|...]},
+             undefined,undefined,undefined,undefined,undefined}}
+
+1> {ok, Consent} = consent_string:parse_b64(<<"BAAAAAAOYa7j0AcABBENBk-AAAAhGAKAAyAAIABoAIAAcgA0ACYADgAOQBAw">>).
+{ok,{consent,1,0,15442098420,28,1,1,<<"EN">>,100,undefined,
+             undefined,undefined,undefined,
+             <<248,0,0>>,
+             undefined,undefined,undefined,529,1,
+             {vendor_range,0,10,[259,114,56|...]},
+             undefined,undefined,undefined,undefined,undefined}}
 
 2> consent_string:purpose(1, Consent).
 true
 
-4> consent_string:purpose([1, 3], Consent).
+3> consent_string:purpose([1, 3], Consent).
 true
 
-3> consent_string:vendor(32, Consent).
+4> consent_string:vendor(32, Consent).
 true
+
+%% same api for v2
+
+1> consent_string:parse_b64(<<"CO4WdepO4WdfWAHABBENA0CsAP_AAH_AAAAAGVtf_X9fb2vj-_5999t0eY1f9_63t-wzjgeNs-8NyZ_X_J4Xr2MyvB34pqYKmR4EulLBAQdkHGHcTQgAwIkVqTLsYk2MizNKJ7JEilMbM2dYGG1vn8XTuZCY70-sf__zv3-_-___6oGUEEmGpfAQJCWMBJNmlUKIEIVxIVAOACihGFo0sNCRwU7I4CPUACABAYgIQIgQYgohZBAAAAAElEQAgAwIBEARAIAAQAjQEIACJAEFgBIGAQACoGhYARRBKBIQYHBUcogQFSLRQTzAAAAA.f_gAD_gAAAAA">>).
+{ok,{consent,2,15977797545,15977797590,7,1,1,<<"EN">>,52,2,
+     1,0,3072,
+     <<255,192,0>>,
+     <<127,192,0>>,
+     0,<<"AA">>,811,0,
+     {vendor_bit_field,<<215,255,95,215,219,...>>},
+     {vendor_legitimate_interests,808,
+     {entry_bitfield,<<"A&"...>>}},
+     {publisher_restrictions,0,[]},
+     undefined,undefined,
+     {consent_segment,3,...}}}
 ```
 
 ## Tests

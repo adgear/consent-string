@@ -27,6 +27,10 @@ eunit:
 	@echo "Running rebar3 eunit..."
 	@$(REBAR3) do eunit -cv, cover -v
 
+escriptize:
+	@echo "Building cli..."
+	@$(REBAR3) do escriptize
+
 test: elvis xref eunit dialyzer
 
 xref:
