@@ -144,22 +144,11 @@ vendor(VendorId, #consent {
 vendor(VendorId, #consent {
         max_vendor_id = MaxVendorId,
         vendors = #vendor_range {
-            default_consent = 0,
             entries = Entries
         }
     }) when VendorId =< MaxVendorId ->
 
     search_entries(VendorId, Entries);
-vendor(VendorId, #consent {
-        max_vendor_id = MaxVendorId,
-        vendors = #vendor_range {
-            %% TODO double check -- this was change from v1
-            default_consent = 1,
-            entries = Entries
-        }
-    }) when VendorId =< MaxVendorId ->
-
-    negate(search_entries(VendorId, Entries));
 vendor(_, _) ->
     false.
 
@@ -230,9 +219,6 @@ convert_bit_chars(Char1, Char2) ->
     %% the spec encodes characters a-z in integer values of
     %% [a=0..z=25]
     list_to_binary([65 + Char1, 65 + Char2]).
-
-negate(false) -> true;
-negate(true) -> false.
 
 %% TODO: this can be refactored once tcv1 gets dropped
 parse_vendors(<<MaxVendorId:16, 0:1, Bin:MaxVendorId/bitstring, Rest/bitstring>>) ->
