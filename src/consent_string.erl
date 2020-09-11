@@ -81,7 +81,12 @@ parse_segment(_) ->
 parse_b64(Bin) ->
     Parts = binary:split(Bin, <<".">>, [global, trim]),
     Decoded = lists:map(fun(X) -> web_base64_decode(X) end, Parts),
-    process_b64_parts(Decoded).
+
+    case lists:any(fun({error, _}) -> true;
+                      (_) -> false end, Decoded) of
+        true -> {error, invalid_consent_string};
+        _ -> process_b64_parts(Decoded)
+    end.
 
 -spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
           undefined | boolean().
@@ -125,6 +130,8 @@ find_segment([#consent_segment { type = Type } = Segment | _], Type) ->
 find_segment([_ | Rest], Type)->
     find_segment(Rest, Type).
 
+process_b64_parts([]) ->
+    {error, invalid_consent_string};
 process_b64_parts([CoreString | Segments]) ->
      ParsedSegments = lists:map(fun(X) -> parse_segment(X) end, Segments),
      BadSegment = lists:any(fun(X) -> X =:= {error, bad_segment} end, ParsedSegments),
@@ -149,18 +156,13 @@ process_b64_parts([CoreString | Segments]) ->
                  {error, _} ->
                      {error, invalid_consent_string}
              end
-     end;
-process_b64_parts({error, _Reason}) ->
-    {error, invalid_consent_string}.
-
+     end.
 
 padding(0) -> <<>>;
 padding(1) -> <<"===">>;
 padding(2) -> <<"==">>;
 padding(3) -> <<"=">>.
 
--spec web_base64_decode(binary()) ->
-          binary() | {error, {bad_base64_encoding, any()}}.
 web_base64_decode(Bin) ->
     Bin2 = binary:replace(Bin, <<"-">>, <<"+">>, [global]),
     Bin3 = binary:replace(Bin2, <<"_">>, <<"/">>, [global]),
