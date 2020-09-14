@@ -80,35 +80,12 @@ parse_segment(_) ->
 
 parse_b64(Bin) ->
     Parts = binary:split(Bin, <<".">>, [global, trim]),
-    [CoreString | Segments] = lists:map(fun(X) -> web_base64_decode(X) end,
-                                        Parts),
+    Decoded = lists:map(fun(X) -> web_base64_decode(X) end, Parts),
 
-    ParsedSegments = lists:map(fun(X) -> parse_segment(X) end,
-                               Segments),
-
-    BadSegment = lists:any(fun(X) -> X =:= {error, bad_segment} end,
-                           ParsedSegments),
-
-    case BadSegment of
-        true ->
-            {error, invalid_consent_string};
-        _ ->
-            DisclosedVendorSegment = find_segment(ParsedSegments, 1),
-            AllowedVendorSegment = find_segment(ParsedSegments, 2),
-            PublisherTCSegment = find_segment(ParsedSegments, 3),
-
-            case parse(CoreString) of
-                {ok, Consent} ->
-                    NewConsent = Consent#consent {
-                        disclosed_vendors = DisclosedVendorSegment,
-                        allowed_vendors = AllowedVendorSegment,
-                        publisher_tc = PublisherTCSegment
-                    },
-
-                    {ok, NewConsent};
-                {error, _} ->
-                    {error, invalid_consent_string}
-            end
+    case lists:any(fun({error, _}) -> true;
+                      (_) -> false end, Decoded) of
+        true -> {error, invalid_consent_string};
+        _ -> process_b64_parts(Decoded)
     end.
 
 -spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
@@ -153,6 +130,34 @@ find_segment([#consent_segment { type = Type } = Segment | _], Type) ->
 find_segment([_ | Rest], Type)->
     find_segment(Rest, Type).
 
+process_b64_parts([]) ->
+    {error, invalid_consent_string};
+process_b64_parts([CoreString | Segments]) ->
+     ParsedSegments = lists:map(fun(X) -> parse_segment(X) end, Segments),
+     BadSegment = lists:any(fun(X) -> X =:= {error, bad_segment} end, ParsedSegments),
+
+     case BadSegment of
+         true ->
+             {error, invalid_consent_string};
+         _ ->
+             DisclosedVendorSegment = find_segment(ParsedSegments, 1),
+             AllowedVendorSegment = find_segment(ParsedSegments, 2),
+             PublisherTCSegment = find_segment(ParsedSegments, 3),
+
+             case parse(CoreString) of
+                 {ok, Consent} ->
+                     NewConsent = Consent#consent {
+                                    disclosed_vendors = DisclosedVendorSegment,
+                                    allowed_vendors = AllowedVendorSegment,
+                                    publisher_tc = PublisherTCSegment
+                                   },
+
+                     {ok, NewConsent};
+                 {error, _} ->
+                     {error, invalid_consent_string}
+             end
+     end.
+
 padding(0) -> <<>>;
 padding(1) -> <<"===">>;
 padding(2) -> <<"==">>;
@@ -162,4 +167,9 @@ web_base64_decode(Bin) ->
     Bin2 = binary:replace(Bin, <<"-">>, <<"+">>, [global]),
     Bin3 = binary:replace(Bin2, <<"_">>, <<"/">>, [global]),
     Padding = padding(size(Bin) rem 4),
-    base64:decode(<<Bin3/binary, Padding/binary>>).
+    try
+        base64:decode(<<Bin3/binary, Padding/binary>>)
+    catch
+        error:Reason ->
+            {error, {bad_base64_encoding, Reason}}
+    end.

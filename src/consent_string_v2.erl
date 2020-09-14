@@ -111,7 +111,9 @@ parse_range_or_bitfield(<<MaxVendorId:16, 1:1, NumEntries:12, Rest/bitstring>>) 
              EntryRest};
         {error, invalid_entries} ->
             {error, invalid_entries}
-    end.
+    end;
+parse_range_or_bitfield(_) ->
+    {error, invalid_entries}.
 
 -spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
           undefined | boolean().
@@ -200,7 +202,9 @@ augment_with_pub_restrictions(error, _) ->
 augment_with_pub_restrictions(Consent, Blob) ->
     case parse_publisher_restrictions(Blob) of
         {ok, Restrictions, Rest} ->
-            {Consent#consent {publisher_restrictions = Restrictions}, Rest}
+            {Consent#consent {publisher_restrictions = Restrictions}, Rest};
+        {error, invalid_publisher_restriction_invalid_entry} ->
+            {error, invalid_consent_string}
     end.
 
 check_bit(Index, BitString) ->
@@ -248,12 +252,18 @@ parse_publisher_restrictions(<<NumPubRestrictions:12, RestrictionEntriesBlob/bit
     {Rest, Entries} = parse_publisher_restriction_bundle(
             NumPubRestrictions, RestrictionEntriesBlob, []),
 
-    PubRestrictions = #publisher_restrictions {
-        num_pub_restrictions = NumPubRestrictions,
-        entries = Entries
-    },
+    case lists:any(fun(X) -> X =:= invalid_publisher_restriction_invalid_entry end,
+                   Entries) of
+        true ->
+            {error, invalid_publisher_restriction_invalid_entry};
+        _ ->
+            PubRestrictions = #publisher_restrictions {
+                num_pub_restrictions = NumPubRestrictions,
+                entries = Entries
+            },
+            {ok, PubRestrictions, Rest}
+    end.
 
-    {ok, PubRestrictions, Rest}.
 
 parse_publisher_restriction_bundle(0, Rest, Acc) ->
     {Rest, Acc};
@@ -277,7 +287,10 @@ parse_publisher_restriction_single_entry(<<PurposeId:6, RestrictionType:2,
             };
         {error, invalid_entries} ->
             {error, invalid_publisher_restriction_invalid_entry}
-    end.
+    end;
+parse_publisher_restriction_single_entry(_) ->
+    {error, invalid_publisher_restriction_invalid_entry}.
+
 
 parse_vendor_legitimate_interests(Bin) ->
     parse_range_or_bitfield(Bin).
