@@ -3,6 +3,9 @@
 
 -export([
     parse/1,
+    pub_restrictions_of_type/2,
+    pub_restrictions_any_for/4,
+    pub_restrictions_of_purpose/2,
     purpose/2,
     purposes_li_transparency/2,
     parse_range_or_bitfield/1,
@@ -74,6 +77,37 @@ parse(<<Version:6, Created:36, LastUpdated:36, CmpId:12, CmpVersion:12,
 parse(_) ->
     {error, invalid_consent_string}.
 
+-spec pub_restrictions_any_for(non_neg_integer(), list(non_neg_integer()),
+                               pos_integer(), consent()) -> boolean().
+pub_restrictions_any_for(_, _, _, #consent { publisher_restrictions = undefined }) ->
+    false;
+pub_restrictions_any_for(RestrictionType, PublisherPurposes, VendorId, Consent) ->
+    Restrictions = pub_restrictions_of_type(RestrictionType, Consent),
+    RestrictionsWithPurposes =
+        lists:filter(fun(#publisher_restrictions_entry { purpose_id = Purpose } ) ->
+                            lists:member(Purpose, PublisherPurposes) end,
+                     Restrictions),
+
+    %% and finally publishers in the above, list the interested vendor
+    lists:any(fun(#publisher_restrictions_entry { entries = Entries }) ->
+                      search_entries(VendorId, Entries) end,
+              RestrictionsWithPurposes).
+
+-spec pub_restrictions_of_type(non_neg_integer(), consent()) ->
+          list(publisher_restrictions_entry()).
+pub_restrictions_of_type(RestrictionType,
+                         #consent { publisher_restrictions =
+                             #publisher_restrictions { entries = Entries } }) ->
+    lists:filter(fun(#publisher_restrictions_entry { restriction_type = R }) ->
+                         R =:= RestrictionType end, Entries).
+
+-spec pub_restrictions_of_purpose(non_neg_integer(), consent()) ->
+          list(publisher_restrictions_entry()).
+pub_restrictions_of_purpose(PurposeId,
+                         #consent { publisher_restrictions =
+                             #publisher_restrictions { entries = Entries } }) ->
+    lists:filter(fun(#publisher_restrictions_entry { purpose_id = Id }) ->
+                         Id =:= PurposeId end, Entries).
 
 -spec purpose(pos_integer() | [pos_integer()], consent()) ->
     boolean().

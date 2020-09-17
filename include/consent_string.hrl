@@ -1,3 +1,8 @@
+-define(CONSENT_NOT_ALLOWED_BY_PUBLISHER, 0).
+-define(CONSENT_REQUIRE_CONSENT, 1).
+-define(CONSENT_REQUIRE_LEGITIMATE_INTEREST, 2).
+-define(CONSENT_UNKNOWN, 3).
+
 -record(consent, {
     version                   :: pos_integer(),
     created                   :: pos_integer(),
@@ -117,10 +122,10 @@
 -type entry_bitfield() :: #entry_bitfield {}.
 -type range_or_bitfield() :: entry_range() | entry_bitfield().
 
--type restriction_not_allowed_by_publisher() :: 0.
--type restriction_require_consent() :: 1.
--type restriction_require_legitimate_interest() :: 2.
--type restriction_unknown() :: 3.
+-type restriction_not_allowed_by_publisher()    :: ?CONSENT_NOT_ALLOWED_BY_PUBLISHER.
+-type restriction_require_consent()             :: ?CONSENT_REQUIRE_CONSENT.
+-type restriction_require_legitimate_interest() :: ?CONSENT_REQUIRE_LEGITIMATE_INTEREST.
+-type restriction_unknown()                     :: ?CONSENT_UNKNOWN.
 
 -type restriction_type() :: restriction_not_allowed_by_publisher() |
                             restriction_require_consent() |
