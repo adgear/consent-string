@@ -19,6 +19,10 @@ main([Command | Args]) ->
                 {error, invalid_consent_string} ->
                     io:format("invalid consent string~n")
             end;
+        "parse-file" ->
+            [Filename | _] = Args,
+            Data = parse_file(Filename),
+            to_csv(Data);
         _ ->
             usage()
     end.
@@ -115,3 +119,27 @@ print_v2(Consent) ->
     io:format("  vendor_li           : ~p~n", [VendorsLI]),
     io:format("  publisher restrict  : ~p~n", [PublisherRestrictions]),
     io:format("~n").
+
+parse_file(Filename) ->
+    {ok, Contents} = file:read_file(Filename),
+    Lines = binary:split(Contents, <<"\n">>, [global]),
+
+    ProcessFn =
+        %% {ok, ConsentString} | {error, ConsentString}
+        fun(L) ->
+                case consent_string:parse_b64(L) of
+                    {ok, _} -> {ok, L};
+                    {error, _} -> {error, L}
+                end
+        end,
+
+    lists:map(ProcessFn, Lines).
+
+to_csv(Values) ->
+    %% the format is atcually a small hack to get around elvis
+    %% complaining about the , operator. I want to print strings stuck
+    %% to the comma, but I think elvis thinks it's an
+    %% operator. There's no way to disable the lint for the line
+    %% below, or the complete file at the time of writing.
+    lists:foreach(fun({A, B}) -> io:format("~p\x2C~s~n", [A, B]) end,
+                  Values).
