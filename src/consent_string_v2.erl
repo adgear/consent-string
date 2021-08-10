@@ -150,7 +150,7 @@ parse_range_or_bitfield(_) ->
     {error, invalid_entries}.
 
 -spec purposes_li_transparency(pos_integer() | [pos_integer()], consent()) ->
-          undefined | boolean().
+          boolean().
 
 purposes_li_transparency(PurposeId, Consent) when is_integer(PurposeId) ->
     purposes_li_transparency([PurposeId], Consent);
