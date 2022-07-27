@@ -113,6 +113,12 @@ get_vendors(#consent {
     get_bits(Vendors, 1, []);
 get_vendors(#consent {
         vendors = #vendor_range {
+            entries = []
+        }
+    }) ->
+    undefined;
+get_vendors(#consent {
+        vendors = #vendor_range {
             default_consent = 0,
             entries = Entries
         }
