@@ -12,7 +12,8 @@
     vendor/2,
     vendor_legitimate_interests/2,
     get_vendors/1,
-    get_vendor_legitimate_interests/1
+    get_vendor_legitimate_interests/1,
+    get_purposes_allowed/1
 ]).
 
 -spec parse(binary()) ->
@@ -218,6 +219,11 @@ get_vendor_legitimate_interests(#consent{
     }
 }) ->
     expand_range(Entries).
+
+-spec get_purposes_allowed(consent()) -> [pos_integer()].
+
+get_purposes_allowed(#consent{purposes_allowed = PurposesAllowed}) ->
+    get_bits(PurposesAllowed).
 
 
 %% private

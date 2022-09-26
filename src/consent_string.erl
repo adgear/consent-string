@@ -10,7 +10,7 @@
     vendor_legitimate_interests/2,
     get_vendors/1,
     get_vendor_legitimate_interests/1,
-
+    get_purposes_allowed/1,
     main/1
 ]).
 
@@ -139,7 +139,18 @@ get_vendors(_) ->
 get_vendor_legitimate_interests(#consent { version = 1 }) ->
     undefined;
 get_vendor_legitimate_interests(#consent { version = 2 } = Consent) ->
-    consent_string_v2:get_vendor_legitimate_interests(Consent).
+    consent_string_v2:get_vendor_legitimate_interests(Consent);
+get_vendor_legitimate_interests(_) ->
+    undefined.
+
+-spec get_purposes_allowed(consent()) -> [pos_integer()] | undefined.
+
+get_purposes_allowed(#consent { version = 1 } = Consent) ->
+    consent_string_v1:get_purposes_allowed(Consent);
+get_purposes_allowed(#consent { version = 2 } = Consent) ->
+    consent_string_v2:get_purposes_allowed(Consent);
+get_purposes_allowed(_) ->
+    undefined.
 
 %% private
 find_segment([], _) ->

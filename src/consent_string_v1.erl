@@ -5,7 +5,8 @@
     parse/1,
     purpose/2,
     vendor/2,
-    get_vendors/1
+    get_vendors/1,
+    get_purposes_allowed/1
 ]).
 
 -spec parse(binary()) ->
@@ -133,6 +134,11 @@ get_vendors(#consent {
     {1, expand_range(Entries, [])};
 get_vendors(_) ->
     undefined.
+
+-spec get_purposes_allowed(consent()) -> [pos_integer()].
+
+get_purposes_allowed(#consent{purposes_allowed = PurposesAllowed}) ->
+    get_bits(PurposesAllowed, 1, []).
 
 %% private
 boolean(0) -> false;
