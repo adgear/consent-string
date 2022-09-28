@@ -4,7 +4,9 @@
 -export([
     parse/1,
     purpose/2,
-    vendor/2
+    vendor/2,
+    get_vendors/1,
+    get_purposes_allowed/1
 ]).
 
 -spec parse(binary()) ->
@@ -102,6 +104,42 @@ vendor(VendorId, #consent {
 vendor(_, _) ->
     false.
 
+-spec get_vendors(consent()) -> [pos_integer()] | {1, [pos_integer()]} | undefined.
+
+get_vendors(#consent {
+        vendors = #vendor_bit_field {
+            fields = Vendors
+        }
+    }) ->
+    get_bits(Vendors, 1, []);
+get_vendors(#consent {
+        vendors = #vendor_range {
+            entries = []
+        }
+    }) ->
+    undefined;
+get_vendors(#consent {
+        vendors = #vendor_range {
+            default_consent = 0,
+            entries = Entries
+        }
+    }) ->
+    expand_range(Entries, []);
+get_vendors(#consent {
+        vendors = #vendor_range {
+            default_consent = 1,
+            entries = Entries
+        }
+    }) ->
+    {1, expand_range(Entries, [])};
+get_vendors(_) ->
+    undefined.
+
+-spec get_purposes_allowed(consent()) -> [pos_integer()].
+
+get_purposes_allowed(#consent{purposes_allowed = PurposesAllowed}) ->
+    get_bits(PurposesAllowed, 1, []).
+
 %% private
 boolean(0) -> false;
 boolean(1) -> true.
@@ -167,3 +205,22 @@ search_entries(Id, [Value | _]) when Id =:= Value ->
     true;
 search_entries(Id, [_ | T]) ->
     search_entries(Id, T).
+
+get_bits(<<>>, _Cnt, SetBits) ->
+    SetBits;
+get_bits(<<1:1, BitString/bitstring>>, Cnt, SetBits) ->
+    get_bits(BitString, Cnt + 1, [Cnt | SetBits]);
+get_bits(<<0:1, BitString/bitstring>>, Cnt, SetBits) ->
+    get_bits(BitString, Cnt + 1, SetBits).
+
+expand_range([], Result) ->
+    Result;
+expand_range([{Start, End} | T], Result) ->
+    expand_range(T, do_expand_range(Start, End, Result));
+expand_range([Value | T], Result) ->
+    expand_range(T, [Value | Result]).
+
+do_expand_range(End, End, Result) ->
+    [End | Result];
+do_expand_range(Start, End, Result) ->
+    do_expand_range(Start + 1, End, [Start | Result]).

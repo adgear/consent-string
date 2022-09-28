@@ -10,7 +10,10 @@
     purposes_li_transparency/2,
     parse_range_or_bitfield/1,
     vendor/2,
-    vendor_legitimate_interests/2
+    vendor_legitimate_interests/2,
+    get_vendors/1,
+    get_vendor_legitimate_interests/1,
+    get_purposes_allowed/1
 ]).
 
 -spec parse(binary()) ->
@@ -195,6 +198,34 @@ vendor_legitimate_interests(Ids, #consent { vendor_legitimate_interests = VLI })
     #vendor_legitimate_interests { interests = Interests } = VLI,
     lookup_range_or_entry(Ids, Interests).
 
+-spec get_vendors(consent()) -> [pos_integer()].
+
+get_vendors(#consent{vendors = #vendor_bit_field{fields = Fields}}) ->
+    get_bits(Fields);
+get_vendors(#consent{vendors = #vendor_range{entries = Entries}}) ->
+    expand_range(Entries).
+
+-spec get_vendor_legitimate_interests(consent()) -> [pos_integer()].
+
+get_vendor_legitimate_interests(#consent{
+    vendor_legitimate_interests = #vendor_legitimate_interests{
+        interests = #entry_bitfield{fields = Fields}
+    }
+}) ->
+    get_bits(Fields);
+get_vendor_legitimate_interests(#consent{
+    vendor_legitimate_interests = #vendor_legitimate_interests{
+        interests = #entry_range{entries = Entries}
+    }
+}) ->
+    expand_range(Entries).
+
+-spec get_purposes_allowed(consent()) -> [pos_integer()].
+
+get_purposes_allowed(#consent{purposes_allowed = PurposesAllowed}) ->
+    get_bits(PurposesAllowed).
+
+
 %% private
 
 lookup_range_or_entry(Ids, #entry_bitfield { fields = Fields }) ->
@@ -252,6 +283,15 @@ check_bit(Index, BitString) ->
 
 bit_to_boolean(0) -> false;
 bit_to_boolean(1) -> true.
+
+get_bits(BitString) -> get_bits(BitString, 1, []).
+
+get_bits(<<>>, _Cnt, SetBits) ->
+    SetBits;
+get_bits(<<1:1, BitString/bitstring>>, Cnt, SetBits) ->
+    get_bits(BitString, Cnt + 1, [Cnt | SetBits]);
+get_bits(<<0:1, BitString/bitstring>>, Cnt, SetBits) ->
+    get_bits(BitString, Cnt + 1, SetBits).
 
 convert_bit_chars(Char1, Char2) ->
     %% the spec encodes characters a-z in integer values of
@@ -362,3 +402,17 @@ search_entries(Id, [Value | _]) when Id =:= Value ->
     true;
 search_entries(Id, [_ | T]) ->
     search_entries(Id, T).
+
+expand_range(Entries) -> expand_range(Entries, []).
+
+expand_range([], Result) ->
+    Result;
+expand_range([{Start, End} | T], Result) ->
+    expand_range(T, do_expand_range(Start, End, Result));
+expand_range([Value | T], Result) ->
+    expand_range(T, [Value | Result]).
+
+do_expand_range(End, End, Result) ->
+    [End | Result];
+do_expand_range(Start, End, Result) ->
+    do_expand_range(Start + 1, End, [Start | Result]).
