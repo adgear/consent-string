@@ -1,0 +1,13 @@
+metadata:
+  name: consent-string
+  description: "This is an Erlang Library used to  decode  the Transparency & Consent String"
+  labels:
+    jira-project: DEGA
+    jira-board: 189
+  links:
+    - url: https://github.com/InteractiveAdvertisingBureau/GDPR-Transparency-and-Consent-Framework/blob/master/TCFv2/IAB%20Tech%20Lab%20-%20Consent%20string%20and%20vendor%20list%20formats%20v2.md#about-the-transparency--consent-string-tc-string
+      title: Component Documentation Page
+spec:
+  owner: cg-dsp-bidding-systems
+  type:  library
+  lifecycle:  production
