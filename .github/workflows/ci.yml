@@ -1,11 +1,11 @@
-name: CI tests
+name: Test CI
 on: push
 jobs:
-  tests:
+  Test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        erlang: ["21.1", '20.3']
+        erlang: ['21.1', '20.3']
     container:
       image: erlang:${{matrix.erlang}}
     steps:
@@ -21,5 +21,11 @@ jobs:
           restore-keys: |
             ci-${{runner.os}}-${{env.cache-name}}-erlang_${{matrix.erlang}}-rebar3
             ci-${{runner.os}}-${{env.cache-name}}-erlang_${{matrix.erlang}}
-      - name: tests
-        run: make test
+      - name: elvis
+        run: make elvis
+      - name: xref
+        run: make xref
+      - name: eunit
+        run: make eunit
+      - name: dialyzer
+        run: make dialyzer
