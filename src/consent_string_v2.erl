@@ -396,7 +396,7 @@ parse_entries(_, _, _) ->
 
 search_entries(_Id, []) ->
     false;
-search_entries(Id, [{Start, End} | _]) when Id > Start, Id < End->
+search_entries(Id, [{Start, End} | _]) when Id >= Start, Id =< End->
     true;
 search_entries(Id, [Value | _]) when Id =:= Value ->
     true;
