@@ -38,6 +38,11 @@
     publisher_tc      :: undefined | consent_segment()
 }).
 
+-record(addtl_consent, {
+    version :: pos_integer(),
+    atp_ids :: [pos_integer()]
+}).
+
 -record(consent_segment_entry_disclosed_vendors, {
     max_vendor_id :: pos_integer(),
     entries       :: range_or_bitfield()
@@ -98,6 +103,7 @@
 }).
 
 -type consent() :: #consent {}.
+-type addtl_consent() :: #addtl_consent {}.
 
 -type consent_segment() :: #consent_segment {}.
 
