@@ -1,3 +1,4 @@
+%% @private
 -module(consent_debug).
 -include("consent_string.hrl").
 

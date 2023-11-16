@@ -14,6 +14,7 @@
     main/1
 ]).
 
+%% @private
 -spec main(list()) -> no_return().
 main(Args) ->
     consent_string_cli:main(Args).

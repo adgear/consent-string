@@ -15,9 +15,9 @@ dialyzer:
 	@echo "Running rebar3 dialyze..."
 	@$(REBAR3) dialyzer
 
-edoc:
-	@echo "Running rebar3 edoc..."
-	@$(REBAR3) as edoc edoc
+doc:
+	@echo "Running rebar3 ex_doc..."
+	@$(REBAR3) ex_doc
 
 elvis:
 	@echo "Running elvis rock..."
@@ -37,4 +37,4 @@ xref:
 	@echo "Running rebar3 xref..."
 	@$(REBAR3) xref
 
-.PHONY: clean compile dialyzer edoc elvis eunit xref
+.PHONY: clean compile dialyzer doc elvis eunit xref
