@@ -21,7 +21,7 @@ edoc:
 
 elvis:
 	@echo "Running elvis rock..."
-	@$(ELVIS) rock
+	@$(REBAR3) lint
 
 eunit:
 	@echo "Running rebar3 eunit..."
