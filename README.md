@@ -53,7 +53,7 @@ true
 
 ```makefile
 make dialyzer
-make elvis
+make lint
 make eunit
 make xref
 ```
