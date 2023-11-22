@@ -21,8 +21,8 @@ jobs:
           restore-keys: |
             ci-${{runner.os}}-${{env.cache-name}}-erlang_${{matrix.erlang}}-rebar3
             ci-${{runner.os}}-${{env.cache-name}}-erlang_${{matrix.erlang}}
-      - name: elvis
-        run: make elvis
+      - name: lint
+        run: make lint
       - name: xref
         run: make xref
       - name: eunit

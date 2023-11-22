@@ -2,7 +2,7 @@
 
 IAB consent-string library
 
-[![Build Status](https://travis-ci.org/adgear/consent-string.svg?branch=master)](https://travis-ci.org/adgear/consent-string?branch=master)
+[![Build Status](https://github.com/adgear/consent-string/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/adgear/consent-string?branch=master)
 
 ## API
 
@@ -53,7 +53,7 @@ true
 
 ```makefile
 make dialyzer
-make elvis
+make lint
 make eunit
 make xref
 ```

@@ -1,6 +1,8 @@
+%% @private
 -module(consent_string_cli).
 -export([main/1]).
 -include("consent_string.hrl").
+
 
 -spec main(list()) -> no_return().
 main([]) ->

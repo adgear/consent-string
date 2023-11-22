@@ -1,5 +1,4 @@
-ELVIS=./bin/elvis
-REBAR3=./bin/rebar3
+REBAR3 ?= rebar3
 
 all: compile
 
@@ -15,12 +14,12 @@ dialyzer:
 	@echo "Running rebar3 dialyze..."
 	@$(REBAR3) dialyzer
 
-edoc:
-	@echo "Running rebar3 edoc..."
-	@$(REBAR3) as edoc edoc
+doc:
+	@echo "Running rebar3 ex_doc..."
+	@$(REBAR3) ex_doc
 
-elvis:
-	@echo "Running elvis rock..."
+lint:
+	@echo "Running rebar3 lint..."
 	@$(REBAR3) lint
 
 eunit:
@@ -31,10 +30,10 @@ escriptize:
 	@echo "Building cli..."
 	@$(REBAR3) do escriptize
 
-test: elvis xref eunit dialyzer
+test: lint xref eunit dialyzer
 
 xref:
 	@echo "Running rebar3 xref..."
 	@$(REBAR3) xref
 
-.PHONY: clean compile dialyzer edoc elvis eunit xref
+.PHONY: clean compile dialyzer doc eunit lint xref
