@@ -40,7 +40,9 @@
 
 -record(addtl_consent, {
     version :: pos_integer(),
-    atp_ids :: [pos_integer()]
+    atp_ids :: [pos_integer()],
+    %% Only version 2 has this field potentially set
+    disclosed_atp_ids :: undefined | [pos_integer()]
 }).
 
 -record(consent_segment_entry_disclosed_vendors, {

@@ -47,6 +47,11 @@ true
      {publisher_restrictions,0,[]},
      undefined,undefined,
      {consent_segment,3,...}}}
+
+%% AC string
+
+1> additional_consent_string:parse(<<"2~1.35.41.101~dv.9.21.81">>).
+{ok, {addtl_consent,2,[1,35,41,101],[9,21,81]}}
 ```
 
 ## Tests

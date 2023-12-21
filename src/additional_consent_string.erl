@@ -21,17 +21,27 @@
 % otherwise an appropriate error is returned.
 %
 parse(Bin) when is_binary(Bin) ->
-    case parse_version(Bin) of
-        {ok, Version, Bin1} ->
-            case parse_atp_ids(Bin1) of
-                {ok, AtpIds} ->
-                    {ok, #addtl_consent {
-                        version = Version,
-                        atp_ids = AtpIds
-                    }};
-                Error -> Error
-            end;
-        Error -> Error
+    try
+        {ok, Version, <<?KNOWN_SEPARATOR, Bin1/binary>>} = parse_version(Bin),
+        case Version of
+            1 ->
+                {ok, AtpIds, <<"">>} = parse_atp_ids(Bin1),
+                {ok, #addtl_consent {
+                    version = Version,
+                    atp_ids = AtpIds
+                }};
+            2 ->
+                {ok, AtpIds, <<?KNOWN_SEPARATOR, "dv.", Bin2/binary>>} = parse_atp_ids(Bin1),
+                {ok, DisclosedAtpIds, <<"">>} = parse_atp_ids(Bin2),
+                {ok, #addtl_consent {
+                    version = Version,
+                    atp_ids = AtpIds,
+                    disclosed_atp_ids = DisclosedAtpIds
+                }}
+        end
+    catch
+        _:_ ->
+            {error, invalid_ac_string}
     end;
 parse(_) ->
     {error, invalid_ac_string}.
@@ -41,16 +51,15 @@ parse_version(Bin) ->
 
 parse_version(<<Bin, Rest/binary>>, Acc) when Bin >= $0, Bin =< $9 ->
     parse_version(Rest, <<Acc/binary, Bin>>);
-% Consume the separator token
-parse_version(<<?KNOWN_SEPARATOR, Rest/binary>>, Acc) ->
+parse_version(Rest, Acc) ->
     case safe_binary_to_integer(Acc) of
         undefined ->
             {error, invalid_ac_string};
+        eof ->
+            {error, invalid_ac_string};
         Version ->
             {ok, Version, Rest}
-    end;
-parse_version(_, _) ->
-    {error, invalid_ac_string}.
+    end.
 
 parse_atp_ids(Bin) ->
     parse_atp_ids(Bin, <<"">>, []).
@@ -61,24 +70,22 @@ parse_atp_ids(<<".", Rest/binary>>, Acc, Ids) when Rest =/= <<"">> ->
     case safe_binary_to_integer(Acc) of
         undefined ->
             {error, invalid_ac_string};
+        eof ->
+            {error, invalid_ac_string};
         Id ->
             parse_atp_ids(Rest, <<"">>, [Id | Ids])
     end;
-parse_atp_ids(<<_Invalid, _Rest/binary>>, _Acc, _Ids) ->
-    {error, invalid_ac_string};
-parse_atp_ids(<<"">>, <<"">>, Ids) ->
-    {ok, lists:reverse(Ids)};
-parse_atp_ids(<<"">>, Acc, Ids) ->
+parse_atp_ids(<<Rest/binary>>, Acc, Ids) ->
     case safe_binary_to_integer(Acc) of
-        undefined ->
-            {error, invalid_ac_string};
-        Id ->
-            % Preserve the order of ids
-            {ok, lists:reverse([Id | Ids])}
+        undefined -> {error, invalid_ac_string};
+        eof       -> {ok, lists:reverse(Ids), Rest};
+        Id        -> {ok, lists:reverse([Id | Ids]), Rest}
     end.
 
 
--spec safe_binary_to_integer(binary()) -> undefined | integer().
+-spec safe_binary_to_integer(binary()) -> eof | undefined | integer().
+safe_binary_to_integer(<<"">>) ->
+    eof;
 safe_binary_to_integer(Bin) ->
     try
         binary_to_integer(Bin, 10)
